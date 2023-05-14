@@ -1,0 +1,3 @@
+# 2023_TW_CsieSprout_DiscordBot
+
+TOKEN = OTg1NDI4ODkxNzUxNTU5MjA4.GYo-6G.Q7YEwgKeqGDI4XUM5G1y714UeHf0Cmd-nivfJs
