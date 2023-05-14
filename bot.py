@@ -1,45 +1,37 @@
+# Import libraries
 import discord
 from discord.ext import commands
-import asyncio, json, os
+import os  
+from dotenv import load_dotenv
 
-with open("seting.json", mode="r", encoding="utf8") as js:
-    seting = json.load(js)
-
-intents = discord.Intents.all()
-# client = discord.Client(intents = intents)
-bot = commands.Bot(command_prefix="/", intents=intents)
+# Set bots 
+load_dotenv()
+bot = commands.Bot(command_prefix ="$", intents = discord.Intents.all()) 
 
 
-def run_bot():
-    @bot.event
-    async def on_ready():
-        print(f"名為：「{bot.user}」的機器人已上線！")
+@bot.event
+async def on_ready():
+    for FileName in os.listdir('./cmds'):
+        if FileName.endswith('.py'):
+            bot.load_extension(f'cmds.{FileName[:-3]}')
+    
+    print(">>Bot is Online<<")
 
-    @bot.command()
-    async def load(ctx, extension):
-        await bot.load_extension(f"cogs.{extension}")
-        await ctx.send(f"{extension} loaded")
+@bot.command()
+async def load(ctx, extension):
+    bot.load_extension(f'cmds.{extension}')
+    await ctx.send(f'Loaded')
 
-    @bot.command()
-    async def unload(ctx, extension):
-        await bot.unload_extension(f"cogs.{extension}")
-        await ctx.send(f"{extension} unloaded")
+@bot.command()
+async def reload(ctx, extension):
+    bot.reload_extension(f'cmds.{extension}')
+    await ctx.send(f'Reloaded')
 
-    @bot.command()
-    async def reload(ctx, extension):
-        await bot.reload_extension(f"cogs.{extension}")
-        await ctx.send(f"{extension} reloaded")
-
-    bot.run(seting["TOKEN"])
-
-
-async def load_extension():
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py"):
-            await bot.load_extension(f"cogs.{filename[:-3]}")
-            print(f"Cog:{filename} loading complete ")
+@bot.command()
+async def unload(ctx, extension):
+    bot.unload_extension(f'cmds.{extension}')
+    await ctx.send(f'Unloaded')
 
 
-asyncio.run(load_extension())
-if __name__ == "__main__":
-    run_bot()
+if  __name__ == "__main__":
+    bot.run(os.getenv('TOKEN'))
