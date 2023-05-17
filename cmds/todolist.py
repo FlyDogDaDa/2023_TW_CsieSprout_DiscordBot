@@ -1,14 +1,15 @@
 import discord
 from discord.ext import commands
-import json 
+import json
 from core import Cog_Extension
 
+
 class TodoList(Cog_Extension):
-    # Initialization 
+    # Initialization
     def __init__(self, bot):
         self.todo = []
 
-        '''
+        """
         todo 是一個 list 變數
         你可以在各個function中對self.todo做操作
         來當作模擬todolist
@@ -17,30 +18,30 @@ class TodoList(Cog_Extension):
         list : append, remove, sort
         ctx.send(str)
 
-        '''
-        
-    # Add todolist 
+        """
+
+    # Add todolist
     # item 是要增加的待辨事項
     @commands.command()
     async def AddTodoList(self, ctx, item):
-        pass 
+        pass
 
     # Remove todolist
     # item 是要移除的待辨事項
     @commands.command()
     async def RemoveTodoList(self, ctx, item):
-        pass 
+        pass
 
     # Sort todolist
     @commands.command()
     async def SortTodoList(self, ctx):
-        pass 
-
+        pass
 
     # Clear todolist
     @commands.command()
     async def ClearTodoList(self, ctx):
-       pass 
+        pass
 
-def setup(bot):
-    bot.add_cog(TodoList(bot))
+
+async def setup(bot):
+    await bot.add_cog(TodoList(bot))

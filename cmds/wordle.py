@@ -1,42 +1,39 @@
 import discord
 from discord.ext import commands
-import json 
+import json
 from core import Cog_Extension
 import urllib
 import random
 
 
-
 class Wordle(Cog_Extension):
-    # Initialization 
+    # Initialization
     def __init__(self, bot):
-        pass 
-        
-        '''
+        pass
+
+        """
         TODO 
         要在init function 中載入單字庫
 
         Hint:
         1. 好像有import urllib
         2. data.json中有貼上url了
-        '''
+        """
 
     @commands.command()
     async def Play(self, ctx):
         pass
 
-        '''
+        """
         TODO 
         要在爬好的單字庫中, 隨機挑選一個單字做為預設的答案
-        '''
-    
+        """
 
-    
     @commands.command()
     async def Ask(self, ctx, ans):
-        pass 
+        pass
 
-        '''
+        """
         ans 是使用者傳入的猜測答案
 
         TODO
@@ -45,9 +42,8 @@ class Wordle(Cog_Extension):
         3. 不是單字的英文組合(不在單字庫中) : 這好像不是個單字
         4. 答對 : 恭喜答對!!!
         5. 猜太多次了 : 真可惜, 答案是{answer}
-        '''
-        
+        """
 
 
-def setup(bot):
-    bot.add_cog(Wordle(bot))
+async def setup(bot):
+    await bot.add_cog(Wordle(bot))
