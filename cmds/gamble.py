@@ -202,7 +202,7 @@ class Horses_Game_driver:
 class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
-        self.coin = 87  # 玩家初始金錢
+        self.coin = 10  # 玩家初始金錢
         self.slot_game_driver = Slot_Game_driver(self)  # 拉霸遊戲驅動
         self.horess_game_driver = Horses_Game_driver(self)  # 賭馬遊戲驅動
 
@@ -254,7 +254,7 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Wash_dishes(self, ctx):  # 洗碗
         User = self.get_user(ctx.message.author.id)
-        User.coin += 10
+        User.coin += 5
         await ctx.send("你幫別人洗碗，獲得5枚硬幣")
 
 
