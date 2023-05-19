@@ -63,7 +63,7 @@ class Slot_Game_driver:
 
     async def pull_down(self, interaction: discord.Interaction):
         if not self.user_data.coin:
-            await interaction.response.send_message(":money_with_wings:你沒有硬幣了！")
+            await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
             return
         self.random()
         self.user_data.coin -= 1  # 扣錢
@@ -80,7 +80,8 @@ class Slot_Game_driver:
 class Horses_Game_driver:
     def __init__(self, user_data) -> None:
         self.user_data = user_data
-        self.leaderboard: list[str, int] = []
+        self.leaderboard_str: str = []
+        self.leaderboard: list[list[int, int, str]] = []
         self.view = self.init_view()
         self.screen_array = [
             ["【歡迎光臨投注站，你有{money}枚硬幣】"],
@@ -92,7 +93,7 @@ class Horses_Game_driver:
             ["{Black}"] * 10 + ["{knight}", "{Red}"],
             ["{Black}"] * 10 + ["{knight}", "{Brown}"],
             [":palm_tree:" * 12],
-            [":arrow_down:花費10枚硬幣下注一匹馬吧:arrow_down:"],
+            [":arrow_down:花費10枚硬幣下注可能會進入前三名的馬匹吧:arrow_down:"],
         ]
 
         self.format_dict = {
@@ -106,6 +107,35 @@ class Horses_Game_driver:
             "flag": ":checkered_flag:",
             "money": user_data.coin,
         }
+        self.bet = []
+
+    async def Payment_process(self, interaction: discord.Interaction) -> bool:
+        if self.user_data.coin >= 10:
+            self.user_data.coin -= 10
+            self.format_dict["money"] = self.user_data.coin
+            return True
+        await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
+        return False
+
+    def green_button_click(self, interaction: discord.Interaction):
+        if self.Payment_process(interaction):
+            self.bet.append("{Green}")
+
+    def blue_button_click(self, interaction: discord.Interaction):
+        if self.Payment_process(interaction):
+            self.bet.append("{Blue}")
+
+    def orange_button_click(self, interaction: discord.Interaction):
+        if self.Payment_process(interaction):
+            self.bet.append("{Orange}")
+
+    def red_button_click(self, interaction: discord.Interaction):
+        if self.Payment_process(interaction):
+            self.bet.append("{Red}")
+
+    def brown_button_click(self, interaction: discord.Interaction):
+        if self.Payment_process(interaction):
+            self.bet.append("{Brown}")
 
     def init_view(self):
         buy_green_button = Button(label="綠馬", emoji="🐴")
@@ -113,14 +143,20 @@ class Horses_Game_driver:
         buy_orange_button = Button(label="橘馬", emoji="🐴")
         buy_red_button = Button(label="紅馬", emoji="🐴")
         buy_brown_button = Button(label="宗馬", emoji="🐴")
-        # handle_button.callback = self.pull_down
+        buy_green_button.callback = self.green_button_click
+        buy_blue_button.callback = self.blue_button_click
+        buy_orange_button.callback = self.orange_button_click
+        buy_red_button.callback = self.red_button_click
+        buy_brown_button.callback = self.brown_button_click
 
-        view = View()
-        view.add_item(buy_green_button)
-        view.add_item(buy_blue_button)
-        view.add_item(buy_orange_button)
-        view.add_item(buy_red_button)
-        view.add_item(buy_brown_button)
+        view = (
+            View()
+            .add_item(buy_green_button)
+            .add_item(buy_blue_button)
+            .add_item(buy_orange_button)
+            .add_item(buy_red_button)
+            .add_item(buy_brown_button)
+        )
         return view
 
     def content(self):
@@ -130,22 +166,33 @@ class Horses_Game_driver:
     def edit_progress_bar(self, index):
         self.screen_array[1][index] = "{flag}"
 
-    def edit_horses(self):
+    def edit_horses(self, timestamp: int):
         for y in range(3, 8):
             y_line = self.screen_array[y]
+            color = y_line[-1]
+
             for _ in range(random.randint(0, 2)):
-                if y_line[0] == "{knight}":
+                if y_line[0] == "{knight}":  # 抵達終點
+                    if not list(
+                        filter(lambda x: x[2] == color, self.leaderboard)
+                    ):  # 沒加入過計分板
+                        self.leaderboard.append([timestamp, 11, color])  # 加入記分板
                     break
-                y_line.append(y_line[-1])
+                y_line.append(color)
                 y_line.pop(0)
 
     def show_leaderboard(self):
         for y in range(3, 8):
             y_line = self.screen_array[y]
-            self.leaderboard.append((y_line[-1], y_line.count(y_line[-1])))
-            random.shuffle(self.leaderboard)
-            self.leaderboard.sort(reverse=True, key=lambda x: x[1])
-        self.screen_array.append(self.leaderboard)
+            color = y_line[-1]
+            if not list(filter(lambda x: x[2] == color, self.leaderboard)):
+                self.leaderboard.append([24, y_line.count(color), color])  # 加入記分板
+
+        random.shuffle(self.leaderboard)
+        self.leaderboard.sort(reverse=True, key=lambda x: x[1])  # 先排距離
+        self.leaderboard.sort(key=lambda x: x[0])  # 再排時間
+        self.leaderboard_str = [horse[2] for horse in self.leaderboard]
+        self.screen_array.append(self.leaderboard_str)
         self.screen_array.append([":first_place::second_place::third_place:"])
 
     def calculate(self, ctx):
@@ -182,7 +229,7 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Horses(self, ctx):  # 賭馬
         User = self.get_user(ctx.message.author.id)
-        User.horess_game_driver.__init__(User)
+        User.horess_game_driver.__init__(User)  # 初始化驅動器
         message: discord.Message = await ctx.send(
             User.horess_game_driver.content(), view=User.horess_game_driver.view
         )
@@ -192,17 +239,23 @@ class Gamble(Cog_Extension):
             if not progress % 2:
                 User.horess_game_driver.edit_progress_bar(progress // 2)
             if progress == 14:
-                User.horess_game_driver.view.clear_items()
+                User.horess_game_driver.view.clear_items()  # 清除購買按鈕
                 User.horess_game_driver.screen_array.pop()  # 清除提示購買文字
             if progress >= 14:
-                User.horess_game_driver.edit_horses()
+                User.horess_game_driver.edit_horses(progress)  # 修改馬的位置
             if progress == 23:
-                User.horess_game_driver.enable_leaderboard()
-                User.horess_game_driver.calculate(ctx)
+                User.horess_game_driver.show_leaderboard()  # 顯示記分板
+                User.horess_game_driver.calculate(ctx)  # 結算金額
             await message.edit(
                 content=User.horess_game_driver.content(),
                 view=User.horess_game_driver.view,
             )
+
+    @commands.command()
+    async def Wash_dishes(self, ctx):  # 洗碗
+        User = self.get_user(ctx.message.author.id)
+        User.coin += 10
+        await ctx.send("你幫別人洗碗，獲得5枚硬幣")
 
 
 async def setup(bot):
