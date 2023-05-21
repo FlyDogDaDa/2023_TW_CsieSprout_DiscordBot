@@ -159,14 +159,14 @@ class Horses_Game_driver:
 
         return view
 
-    def content(self):
+    def content(self) -> str:
         content = "\n".join(["".join(y_line) for y_line in self.screen_array])
         return content.format(**self.format_dict)  # 槽填充
 
-    def edit_progress_bar(self, index):
+    def edit_progress_bar(self, index) -> None:
         self.screen_array[1][index] = "{flag}"
 
-    def edit_horses(self, timestamp: int):
+    def edit_horses(self, timestamp: int) -> None:
         for y in range(3, 8):
             y_line = self.screen_array[y]
             color = y_line[-1]
@@ -181,7 +181,7 @@ class Horses_Game_driver:
                 y_line.append(color)
                 y_line.pop(0)
 
-    def show_leaderboard(self):
+    def show_leaderboard(self) -> None:
         for y in range(3, 8):
             y_line = self.screen_array[y]
             color = y_line[-1]
@@ -195,8 +195,15 @@ class Horses_Game_driver:
         self.screen_array.append(self.leaderboard_str)
         self.screen_array.append([":first_place::second_place::third_place:"])
 
-    def calculate(self, ctx):
-        return
+    def calculate(self) -> str:
+        bonus = 0
+        for color in self.bet:
+            if color in self.leaderboard_str[:3]:
+                bonus += 15
+        self.user_data.coin += bonus
+        if bonus:
+            return f"眼光真好，恭喜你選擇的馬匹為你贏得{bonus}枚硬幣"
+        return f"很可惜這次沒有買中寶馬，下次運氣會更好！"
 
 
 class User_data:
@@ -229,33 +236,39 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Horses(self, ctx):  # 賭馬
         User = self.get_user(ctx.message.author.id)
-        User.horess_game_driver.__init__(User)  # 初始化驅動器
+        User.horess_game_driver.__init__(User)  # 初始化驅動器(清除前次內容)
         message: discord.Message = await ctx.send(
             User.horess_game_driver.content(), view=User.horess_game_driver.view
-        )
+        )  # 送出賭馬的文字內容、包含按鈕的view
 
-        for progress in range(24):
-            await asyncio.sleep(0.5)
-            if not progress % 2:
-                User.horess_game_driver.edit_progress_bar(progress // 2)
-            if progress == 14:
+        for progress in range(24):  # 12
+            await asyncio.sleep(0.5)  # 為了動畫等待半秒
+            if not progress % 2:  # 如果是整數(一秒)
+                User.horess_game_driver.edit_progress_bar(progress // 2)  # 更新進度條
+            if progress == 14:  # 進入賽馬階段
                 User.horess_game_driver.view.clear_items()  # 清除購買按鈕
                 User.horess_game_driver.screen_array.pop()  # 清除提示購買文字
-            if progress >= 14:
+            if progress >= 14:  # 賽馬階段中
                 User.horess_game_driver.edit_horses(progress)  # 修改馬的位置
-            if progress == 23:
+            if progress == 23:  # 結束
                 User.horess_game_driver.show_leaderboard()  # 顯示記分板
-                User.horess_game_driver.calculate(ctx)  # 結算金額
+                calculate_text = User.horess_game_driver.calculate()  # 結算金額
+                await ctx.send(calculate_text)  # 回傳計算後結果
             await message.edit(
                 content=User.horess_game_driver.content(),
                 view=User.horess_game_driver.view,
-            )
+            )  # 修改訊息刷新畫面
 
     @commands.command()
     async def Wash_dishes(self, ctx):  # 洗碗
         User = self.get_user(ctx.message.author.id)
         User.coin += 5
         await ctx.send("你幫別人洗碗，獲得5枚硬幣")
+
+    @commands.command()
+    async def wallet(self, ctx):  # 查看餘額
+        User = self.get_user(ctx.message.author.id)  # 找到使用者
+        await ctx.send(f"你擁有{User.coin}枚硬幣")  # 發送玩家擁有的硬幣
 
 
 async def setup(bot):

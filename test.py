@@ -1,6 +1,11 @@
-@property
-def A():
-    return "AAAAAAAAAAAAA"
+from flask import Flask
+
+app = Flask("HelloWorld")
 
 
-print("{A}".format(**{"A": A}))
+@app.route("/")
+def hello():
+    return "Hello"
+
+
+app.run(host="0.0.0.0")
