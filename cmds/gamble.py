@@ -109,34 +109,34 @@ class Horses_Game_driver:
         }
         self.bet = []
 
-    def Payment_process(self, interaction: discord.Interaction) -> bool:
+    async def Payment_process(self, interaction: discord.Interaction) -> bool:
         if self.user_data.coin >= 10:
             self.user_data.coin -= 10
             self.format_dict["money"] = self.user_data.coin
-            # await interaction.response.send_message(f"扣款成功！剩餘{self.user_data.coin}枚硬幣！")
+            await interaction.response.send_message(f"扣款成功！剩餘{self.user_data.coin}枚硬幣！")
             return True
-        # await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
+        await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
         return False
 
     def init_view(self):
-        def green_button_click(interaction: discord.Interaction):
-            if self.Payment_process(interaction):
+        async def green_button_click(interaction: discord.Interaction):
+            if await self.Payment_process(interaction):
                 self.bet.append("{Green}")
 
-        def blue_button_click(interaction: discord.Interaction):
-            if self.Payment_process(interaction):
+        async def blue_button_click(interaction: discord.Interaction):
+            if await self.Payment_process(interaction):
                 self.bet.append("{Blue}")
 
-        def orange_button_click(interaction: discord.Interaction):
-            if self.Payment_process(interaction):
+        async def orange_button_click(interaction: discord.Interaction):
+            if await self.Payment_process(interaction):
                 self.bet.append("{Orange}")
 
-        def red_button_click(interaction: discord.Interaction):
-            if self.Payment_process(interaction):
+        async def red_button_click(interaction: discord.Interaction):
+            if await self.Payment_process(interaction):
                 self.bet.append("{Red}")
 
-        def brown_button_click(interaction: discord.Interaction):
-            if self.Payment_process(interaction):
+        async def brown_button_click(interaction: discord.Interaction):
+            if await self.Payment_process(interaction):
                 self.bet.append("{Brown}")
 
         buy_green_button = Button(label="綠馬", emoji="🐴")
