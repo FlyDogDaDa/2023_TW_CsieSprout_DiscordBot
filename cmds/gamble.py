@@ -12,6 +12,8 @@ class Game_driver:
     screen_array = []
     format_dict = {}
     game_spend = 0
+    deduction_failure_message = ":money_with_wings:你沒有足夠的硬幣！"
+    deduction_success_message = "扣款成功！"
 
     def content(self) -> str:  # 回傳填充後的畫面字串
         content = "\n".join(["".join(y_line) for y_line in self.screen_array])
@@ -24,6 +26,34 @@ class Game_driver:
             user.coin -= amount  # 扣款
             return True  # 回傳付款成功
         return False  # 回傳付款失敗
+
+
+class Game_View:
+    def __init__(
+        self, *, game_driver: Game_driver, trigger_function, timeout: float | None = 180
+    ):
+        self.game_driver = game_driver  # 指向遊戲驅動
+
+    def trigger_function():
+        pass
+
+    async def Payment_process(
+        self, interaction: discord.Interaction, button: Button
+    ) -> bool:
+        if not self.game_driver.Payment_process(
+            self.game_driver.user_data, self.game_driver.game_spend
+        ):
+            # 發送失敗訊息
+            await interaction.response.send_message(
+                self.game_driver.deduction_failure_message
+            )
+            return  # 使用回傳跳出
+        # 執行應被觸發的程式
+        self.trigger_function(button)
+        # 發送成功訊息
+        await interaction.response.send_message(
+            self.game_driver.deduction_success_message
+        )
 
 
 class Slot_Game_driver(Game_driver):
@@ -91,26 +121,13 @@ class Slot_Game_driver(Game_driver):
         await interaction.response.edit_message(content=self.content())
 
 
-class Horses_Game_View(View):
+class Horses_Game_View(View, Game_View):
     def __init__(self, *, game_driver: Game_driver, timeout: float | None = 180):
         super().__init__(timeout=timeout)
         self.game_driver = game_driver  # 指向遊戲驅動
 
-    async def bet_button_click(
-        self, interaction: discord.Interaction, button: Button
-    ) -> bool:
-        if not self.game_driver.Payment_process(
-            self.game_driver.user_data, self.game_driver.game_spend
-        ):
-            # 發送失敗訊息
-            await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
-            return  # 使用回傳跳出
-        # 將顏色加入下注list
+    def trigger_function(self, button):
         self.game_driver.bet.append("{" + button.label + "}")
-        # 發送成功訊息
-        await interaction.response.send_message(
-            f"扣款成功！剩餘{self.game_driver.user_data.coin}枚硬幣！"
-        )
 
     @discord.ui.button(label="Green", emoji="🐴")
     async def click_Green(self, interaction, button):
