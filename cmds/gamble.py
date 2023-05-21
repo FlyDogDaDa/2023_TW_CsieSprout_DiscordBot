@@ -237,16 +237,20 @@ class Blackjack_Game_driver:
         hit_button.callback = self.hit
         stand_button.callback = self.stand
         double_down_button.callback = self.double_down
-        view = (View()
-                .add_item(hit_button)
-                .add_item(stand_button)
-                .add_item(double_down_button))
+        view = (
+            View()
+            .add_item(hit_button)
+            .add_item(stand_button)
+            .add_item(double_down_button)
+        )
         return view
 
     async def Payment_process(self, interaction: discord.Interaction) -> bool:
         pass
+
     async def hit(self, interaction: discord.Interaction):
         pass
+
     async def stand(self, interaction: discord.Interaction):
         pass
 
@@ -322,5 +326,7 @@ class Gamble(Cog_Extension):
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
+
+
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
