@@ -5,6 +5,7 @@ import asyncio
 from discord.ext import commands
 from discord import ButtonStyle
 from discord.ui import Button, View
+from cmds.gamble import Game_driver
 from core import Cog_Extension
 
 
@@ -28,11 +29,23 @@ class Game_driver:
         return False  # 回傳付款失敗
 
 
-class Game_View:
+class Game_View(View):
     def __init__(
-        self, *, game_driver: Game_driver, trigger_function, timeout: float | None = 180
+        self,
+        *,
+        game_driver: Game_driver,
+        trigger_function=lambda x: x,
+        definition_buttons_list: list[dict] = [{}],
+        timeout: float | None = 180,
     ):
         self.game_driver = game_driver  # 指向遊戲驅動
+        for button_dict in definition_buttons_list:
+
+            @discord.ui.button(**button_dict)
+            async def button_function(interaction, button):
+                await self.Payment_process(interaction, button)
+
+            self[button_dict[""]] = button_function
 
     def trigger_function():
         pass
@@ -54,6 +67,54 @@ class Game_View:
         await interaction.response.send_message(
             self.game_driver.deduction_success_message
         )
+
+
+class Slot_Game_View(Game_View):
+    def __init__(
+        self,
+        *,
+        game_driver: Game_driver,
+    ):
+        buttons_list = [
+            {"label": "spend 1 coin", "emoji": "🕹️", "style": ButtonStyle.green}
+        ]
+        super().__init__(
+            game_driver=game_driver,
+            definition_buttons_list=buttons_list,
+            trigger_function=self.trigger_function,
+        )
+
+    def trigger_function(self, button):
+        self.game_driver.random()
+        turntable = self.game_driver.turntable
+        if turntable[0] == turntable[1] == turntable[2]:
+            bonus = self.game_driver.turntable_money_dict[turntable[0]]
+            self.game_driver.user_data.coin += bonus
+            self.game_driver.screen_array[4][
+                0
+            ] = f":tada:抽中{self.turntable[0]}獎，獲得{bonus}硬幣:tada: "
+        else:
+            self.game_driver.screen_array[4][0] = ""
+        self.game_driver.format_dict["money"] = self.user_data.coin
+
+
+class Horses_Game_View(Game_View):
+    def __init__(self, *, game_driver: Game_driver):
+        buttons_list = [
+            {"label": "Green", "emoji": "🐴"},
+            {"label": "Blue", "emoji": "🐴"},
+            {"label": "Orange", "emoji": "🐴"},
+            {"label": "Red", "emoji": "🐴"},
+            {"label": "Brown", "emoji": "🐴"},
+        ]
+        self.game_driver = game_driver  # 指向遊戲驅動
+        super().__init__(
+            game_driver=game_driver,
+            definition_buttons_list=buttons_list,
+        )
+
+    def trigger_function(self, button):
+        self.game_driver.bet.append("{" + button.label + "}")
 
 
 class Slot_Game_driver(Game_driver):
@@ -94,60 +155,9 @@ class Slot_Game_driver(Game_driver):
             "money": user_data.coin,
         }
 
-    def init_view(self):
-        handle_button = Button(
-            label="spend 1 coin", emoji="🕹️", style=ButtonStyle.green
-        )
-        handle_button.callback = self.pull_down
-        view = View().add_item(handle_button)
-        return view
-
     def random(self):
         self.turntable = random.choices(self.turntable_list, k=3)
         self.format_dict["turntables"] = "".join(self.turntable)
-
-    async def pull_down(self, interaction: discord.Interaction):
-        if not await self.Payment_process(interaction):
-            return
-        self.random()
-        self.user_data.coin -= 1  # 扣錢
-        if self.turntable[0] == self.turntable[1] == self.turntable[2]:
-            bonus = self.turntable_money_dict[self.turntable[0]]
-            self.user_data.coin += bonus
-            self.screen_array[4][0] = f":tada:抽中{self.turntable[0]}獎，獲得{bonus}硬幣:tada: "
-        else:
-            self.screen_array[4][0] = ""
-        self.format_dict["money"] = self.user_data.coin
-        await interaction.response.edit_message(content=self.content())
-
-
-class Horses_Game_View(View, Game_View):
-    def __init__(self, *, game_driver: Game_driver, timeout: float | None = 180):
-        super().__init__(timeout=timeout)
-        self.game_driver = game_driver  # 指向遊戲驅動
-
-    def trigger_function(self, button):
-        self.game_driver.bet.append("{" + button.label + "}")
-
-    @discord.ui.button(label="Green", emoji="🐴")
-    async def click_Green(self, interaction, button):
-        await self.bet_button_click(interaction, button)
-
-    @discord.ui.button(label="Blue", emoji="🐴")
-    async def click_Blue(self, interaction, button):
-        await self.bet_button_click(interaction, button)
-
-    @discord.ui.button(label="Orange", emoji="🐴")
-    async def click_Orange(self, interaction, button):
-        await self.bet_button_click(interaction, button)
-
-    @discord.ui.button(label="Red", emoji="🐴")
-    async def click_Red(self, interaction, button):
-        await self.bet_button_click(interaction, button)
-
-    @discord.ui.button(label="Brown", emoji="🐴")
-    async def click_Brown(self, interaction, button):
-        await self.bet_button_click(interaction, button)
 
 
 class Horses_Game_driver(Game_driver):
