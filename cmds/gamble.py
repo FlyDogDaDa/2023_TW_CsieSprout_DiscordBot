@@ -7,7 +7,25 @@ from discord.ui import Button, View
 from core import Cog_Extension
 
 
-class Slot_Game_driver:
+class Game_driver:
+    screen_array = []
+    format_dict = {}
+    game_spend = 0
+
+    def content(self) -> str:  # 回傳填充後的畫面字串
+        content = "\n".join(["".join(y_line) for y_line in self.screen_array])
+        return content.format(**self.format_dict)  # 槽填充
+        # await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
+
+    @staticmethod
+    def Payment_process(user, amount: int) -> bool:
+        if user.coin >= amount:  # 硬幣足夠
+            user.coin -= amount  # 扣款
+            return True  # 回傳付款成功
+        return False  # 回傳付款失敗
+
+
+class Slot_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
         self.turntable_list = [
             ":cherries:",
@@ -43,6 +61,7 @@ class Slot_Game_driver:
         self.view = self.init_view()
         self.user_data = user_data
         self.turntable = []
+        game_spend = 1
 
     def init_view(self):
         handle_button = Button(
@@ -52,19 +71,9 @@ class Slot_Game_driver:
         view = View().add_item(handle_button)
         return view
 
-    def content(self):
-        content = "\n".join(["".join(y_line) for y_line in self.screen_array])
-        return content.format(**self.format_dict)  # 槽填充
-
     def random(self):
         self.turntable = random.choices(self.turntable_list, k=3)
         self.format_dict["turntables"] = "".join(self.turntable)
-
-    async def Payment_process(self, interaction: discord.Interaction) -> bool:
-        if not self.user_data.coin:  # 沒有硬幣
-            await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
-            return False  # 回傳付款失敗
-        return True  # 有硬幣回傳付款成功
 
     async def pull_down(self, interaction: discord.Interaction):
         if not await self.Payment_process(interaction):
@@ -81,7 +90,7 @@ class Slot_Game_driver:
         await interaction.response.edit_message(content=self.content())
 
 
-class Horses_Game_driver:
+class Horses_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
         self.user_data = user_data
         self.leaderboard_str: str = []
@@ -112,6 +121,7 @@ class Horses_Game_driver:
             "money": user_data.coin,
         }
         self.bet = []
+        game_spend = 10
 
     async def Payment_process(self, interaction: discord.Interaction) -> bool:
         if self.user_data.coin >= 10:
@@ -121,6 +131,9 @@ class Horses_Game_driver:
             return True
         await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
         return False
+
+    def send_debit_result(interaction: discord.Interaction, result: bool) -> None:
+        pass
 
     def init_view(self):
         async def green_button_click(interaction: discord.Interaction):
@@ -210,7 +223,7 @@ class Horses_Game_driver:
         return f"很可惜這次沒有買中寶馬，下次運氣會更好！"
 
 
-class Blackjack_Game_driver:
+class Blackjack_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
         self.user_data = user_data
         self.screen_array = [
@@ -229,6 +242,7 @@ class Blackjack_Game_driver:
             "money": user_data.coin,
         }
         self.view = self.init_view()
+        game_spend = 5
 
     def init_view(self):
         hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
