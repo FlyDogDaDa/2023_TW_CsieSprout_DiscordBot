@@ -49,8 +49,7 @@ class Slot_Game_driver:
             label="spend 1 coin", emoji="🕹️", style=ButtonStyle.green
         )
         handle_button.callback = self.pull_down
-        view = View()
-        view.add_item(handle_button)
+        view = View().add_item(handle_button)
         return view
 
     def content(self):
@@ -61,9 +60,14 @@ class Slot_Game_driver:
         self.turntable = random.choices(self.turntable_list, k=3)
         self.format_dict["turntables"] = "".join(self.turntable)
 
-    async def pull_down(self, interaction: discord.Interaction):
-        if not self.user_data.coin:
+    async def Payment_process(self, interaction: discord.Interaction) -> bool:
+        if not self.user_data.coin:  # 沒有硬幣
             await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
+            return False  # 回傳付款失敗
+        return True  # 有硬幣回傳付款成功
+
+    async def pull_down(self, interaction: discord.Interaction):
+        if not await self.Payment_process(interaction):
             return
         self.random()
         self.user_data.coin -= 1  # 扣錢
@@ -206,12 +210,57 @@ class Horses_Game_driver:
         return f"很可惜這次沒有買中寶馬，下次運氣會更好！"
 
 
+class Blackjack_Game_driver:
+    def __init__(self, user_data) -> None:
+        self.user_data = user_data
+        self.screen_array = [
+            ["【:slot_machine:你有{money}枚硬幣:slot_machine:】"],
+            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
+            ["{Right_arrow}", "{turntables}", "{Left_arrow}"],
+            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
+            [""],
+        ]
+        self.format_dict = {
+            "Green": ":green_square:",
+            "Blue": ":blue_square:",
+            "Left_arrow": ":arrow_left:",
+            "Right_arrow": ":arrow_right:",
+            "turntables": ":black_large_square:" * 3,
+            "money": user_data.coin,
+        }
+        self.view = self.init_view()
+
+    def init_view(self):
+        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
+        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
+        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
+        hit_button.callback = self.hit
+        stand_button.callback = self.stand
+        double_down_button.callback = self.double_down
+        view = (View()
+                .add_item(hit_button)
+                .add_item(stand_button)
+                .add_item(double_down_button))
+        return view
+
+    async def Payment_process(self, interaction: discord.Interaction) -> bool:
+        pass
+    async def hit(self, interaction: discord.Interaction):
+        pass
+    async def stand(self, interaction: discord.Interaction):
+        pass
+
+    async def double_down(self, interaction: discord.Interaction):
+        pass
+
+
 class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
         self.coin = 10  # 玩家初始金錢
         self.slot_game_driver = Slot_Game_driver(self)  # 拉霸遊戲驅動
         self.horess_game_driver = Horses_Game_driver(self)  # 賭馬遊戲驅動
+        self.blackjack_game_driver = Blackjack_Game_driver(self)  # 21點遊戲驅動
 
 
 class Gamble(Cog_Extension):
@@ -271,5 +320,7 @@ class Gamble(Cog_Extension):
         await ctx.send(f"你擁有{User.coin}枚硬幣")  # 發送玩家擁有的硬幣
 
 
+async def setup(bot):
+    await bot.add_cog(Gamble(bot))
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
