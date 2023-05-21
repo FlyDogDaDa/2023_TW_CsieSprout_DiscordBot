@@ -1,3 +1,4 @@
+from typing import Optional
 import discord
 import random
 import asyncio
@@ -27,6 +28,10 @@ class Game_driver:
 
 class Slot_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
+        self.view = self.init_view()
+        self.user_data = user_data
+        self.turntable = []
+        self.game_spend = 1
         self.turntable_list = [
             ":cherries:",
             ":apple:",
@@ -58,10 +63,6 @@ class Slot_Game_driver(Game_driver):
             "turntables": ":black_large_square:" * 3,
             "money": user_data.coin,
         }
-        self.view = self.init_view()
-        self.user_data = user_data
-        self.turntable = []
-        game_spend = 1
 
     def init_view(self):
         handle_button = Button(
@@ -90,14 +91,58 @@ class Slot_Game_driver(Game_driver):
         await interaction.response.edit_message(content=self.content())
 
 
+class Horses_Game_View(View):
+    def __init__(self, *, game_driver: Game_driver, timeout: float | None = 180):
+        super().__init__(timeout=timeout)
+        self.game_driver = game_driver  # 指向遊戲驅動
+
+    async def bet_button_click(
+        self, interaction: discord.Interaction, button: Button
+    ) -> bool:
+        if not self.game_driver.Payment_process(
+            self.game_driver.user_data, self.game_driver.game_spend
+        ):
+            # 發送失敗訊息
+            await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
+            return  # 使用回傳跳出
+        # 將顏色加入下注list
+        self.game_driver.bet.append("{" + button.label + "}")
+        # 發送成功訊息
+        await interaction.response.send_message(
+            f"扣款成功！剩餘{self.game_driver.user_data.coin}枚硬幣！"
+        )
+
+    @discord.ui.button(label="Green", emoji="🐴")
+    async def click_Green(self, interaction, button):
+        await self.bet_button_click(interaction, button)
+
+    @discord.ui.button(label="Blue", emoji="🐴")
+    async def click_Blue(self, interaction, button):
+        await self.bet_button_click(interaction, button)
+
+    @discord.ui.button(label="Orange", emoji="🐴")
+    async def click_Orange(self, interaction, button):
+        await self.bet_button_click(interaction, button)
+
+    @discord.ui.button(label="Red", emoji="🐴")
+    async def click_Red(self, interaction, button):
+        await self.bet_button_click(interaction, button)
+
+    @discord.ui.button(label="Brown", emoji="🐴")
+    async def click_Brown(self, interaction, button):
+        await self.bet_button_click(interaction, button)
+
+
 class Horses_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
+        self.view = Horses_Game_View(game_driver=self)
         self.user_data = user_data
         self.leaderboard_str: str = []
         self.leaderboard: list[list[int, int, str]] = []
-        self.view = self.init_view()
+        self.bet = []
+        self.game_spend = 10
         self.screen_array = [
-            ["【歡迎光臨投注站，你有{money}枚硬幣】"],
+            ["【歡迎光臨投注站】"],
             [":tickets:"] * 7 + [":racehorse:"] * 5,
             [":palm_tree:" * 12],
             ["{Black}"] * 10 + ["{knight}", "{Green}"],
@@ -120,61 +165,6 @@ class Horses_Game_driver(Game_driver):
             "flag": ":checkered_flag:",
             "money": user_data.coin,
         }
-        self.bet = []
-        game_spend = 10
-
-    async def Payment_process(self, interaction: discord.Interaction) -> bool:
-        if self.user_data.coin >= 10:
-            self.user_data.coin -= 10
-            self.format_dict["money"] = self.user_data.coin
-            await interaction.response.send_message(f"扣款成功！剩餘{self.user_data.coin}枚硬幣！")
-            return True
-        await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
-        return False
-
-    def send_debit_result(interaction: discord.Interaction, result: bool) -> None:
-        pass
-
-    def init_view(self):
-        async def green_button_click(interaction: discord.Interaction):
-            if await self.Payment_process(interaction):
-                self.bet.append("{Green}")
-
-        async def blue_button_click(interaction: discord.Interaction):
-            if await self.Payment_process(interaction):
-                self.bet.append("{Blue}")
-
-        async def orange_button_click(interaction: discord.Interaction):
-            if await self.Payment_process(interaction):
-                self.bet.append("{Orange}")
-
-        async def red_button_click(interaction: discord.Interaction):
-            if await self.Payment_process(interaction):
-                self.bet.append("{Red}")
-
-        async def brown_button_click(interaction: discord.Interaction):
-            if await self.Payment_process(interaction):
-                self.bet.append("{Brown}")
-
-        buy_green_button = Button(label="綠馬", emoji="🐴")
-        buy_blue_button = Button(label="藍馬", emoji="🐴")
-        buy_orange_button = Button(label="橘馬", emoji="🐴")
-        buy_red_button = Button(label="紅馬", emoji="🐴")
-        buy_brown_button = Button(label="宗馬", emoji="🐴")
-        buy_green_button.callback = green_button_click
-        buy_blue_button.callback = blue_button_click
-        buy_orange_button.callback = orange_button_click
-        buy_red_button.callback = red_button_click
-        buy_brown_button.callback = brown_button_click
-
-        view = View()
-        view.add_item(buy_green_button)
-        view.add_item(buy_blue_button)
-        view.add_item(buy_orange_button)
-        view.add_item(buy_red_button)
-        view.add_item(buy_brown_button)
-
-        return view
 
     def content(self) -> str:
         content = "\n".join(["".join(y_line) for y_line in self.screen_array])
@@ -226,6 +216,8 @@ class Horses_Game_driver(Game_driver):
 class Blackjack_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
         self.user_data = user_data
+        self.view = self.init_view()
+        self.game_spend = 5
         self.screen_array = [
             ["【:slot_machine:你有{money}枚硬幣:slot_machine:】"],
             ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
@@ -241,8 +233,6 @@ class Blackjack_Game_driver(Game_driver):
             "turntables": ":black_large_square:" * 3,
             "money": user_data.coin,
         }
-        self.view = self.init_view()
-        game_spend = 5
 
     def init_view(self):
         hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
