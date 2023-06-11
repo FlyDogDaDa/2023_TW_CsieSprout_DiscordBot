@@ -1,4 +1,4 @@
-from cmds.gamble import Renderable, Renderer
+from cmds.gamble import Renderable, rendering
 
 
 class defor(Renderable):
@@ -6,10 +6,9 @@ class defor(Renderable):
         super().__init__(x, y)
 
     def content(self) -> list[list[str]]:
-        return [["A", "B", "C"]]
+        return [["A", None, "C"]]
 
 
-s = Renderer(Renderer.creat_empty_screen(5, 3))
-s.add_object(defor(1, 1))
-s.add_object(defor(2, 1))
-print(s.content())
+obj = [defor(1, 1), defor(2, 1)]
+
+print(rendering(5, 3, obj))

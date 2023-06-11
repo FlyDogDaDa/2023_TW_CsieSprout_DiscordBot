@@ -9,40 +9,37 @@ from abc import ABC, abstractmethod
 
 
 class Renderable(ABC):
+    """
+    可以被渲染的抽象概念，座標為左、上角。
+    """
+
     @abstractmethod
     def __init__(self, x: int, y: int) -> None:
         super().__init__()
-        self.x = x
-        self.y = y
+        self.x = x  # 最左座標點
+        self.y = y  # 最上座標點
 
     @abstractmethod
-    def content(self) -> list[list[str]]:
+    def content(self) -> list[list[str | None]]:  # 可以呼叫內容
         pass
 
 
-class Renderer:
+def rendering(Width: int, High: int, objects: list[Renderable]) -> str:
     """
-    rendering(self, Width: int, High: int, objects) -> str
-    創建(Width, High)的畫面，將objects渲染到畫面上並回傳字串
+    使用畫面大小(Width, High)創建畫面，依照順序渲染objects內容，支援None渲染。
     """
-
-    @staticmethod
-    def __rendering_object(screen: list[list[str]], object: Renderable) -> None:
-        content_array = object.content()  # 取的物件的內容陣列
+    # 創建空畫面，內容填充全形空格
+    screen = [["　" for _ in range(Width)] for _ in range(High)]
+    for object in reversed(objects):  # 跑過每個物件
         x_offset, y_offset = object.x, object.y  # 左上角=相較於0點的位移量
-        for y, width in range(len(content_array)):  # 跑過每個列
+        content_array = object.content()  # 取的物件的內容陣列
+        for y in range(len(content_array)):  # 跑過每個列
             width = len(content_array[y])
             for x in range(width):  # 跑過每個列的每個元素
                 if content_array[y][x]:  # 有內容
                     screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
-
-    def rendering(self, Width: int, High: int, objects) -> str:
-        # 創建空畫面，內容填充全形空格
-        screen = [["　" for _ in range(Width)] for _ in range(High)]
-        for object in objects:  # 跑過每個物件
-            self.__rendering_object(screen, object)  # 渲染到畫面
-        # 回傳渲染後的畫面
-        return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
+    # 回傳渲染後的畫面
+    return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
 
 
 class Game_driver:
