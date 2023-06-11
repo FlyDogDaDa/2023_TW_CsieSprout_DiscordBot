@@ -6,7 +6,6 @@ from discord import ButtonStyle
 from discord.ui import Button, View
 from core import Cog_Extension
 from abc import ABC, abstractmethod
-import copy
 
 
 class Renderable(ABC):
@@ -21,29 +20,14 @@ class Renderable(ABC):
         pass
 
 
-class Renderer(Renderable):
+class Renderer:
     """
-    add_object(object: Renderable) -> None
-    插入可渲染物件到最高圖層。
-
-    content() -> str
-    渲染畫面並回傳字串。
+    rendering(self, Width: int, High: int, objects) -> str
+    創建(Width, High)的畫面，將objects渲染到畫面上並回傳字串
     """
-
-    def __init__(self, Width: int, High: int) -> None:
-        # 創建空畫面，內容填充全形空格
-        screen = [["　" for _ in range(Width)] for _ in range(High)]
-        self.empty_screen = screen
-
-        # 創建空陣列用來儲存被渲染物件
-        self.layers: list[Renderable] = []
-
-    def add_object(self, object: Renderable):
-        self.layers.insert(0, object)  # 添加物件
-        return self
 
     @staticmethod
-    def __rendering(screen: list[list[str]], object: Renderable) -> None:
+    def __rendering_object(screen: list[list[str]], object: Renderable) -> None:
         content_array = object.content()  # 取的物件的內容陣列
         x_offset, y_offset = object.x, object.y  # 左上角=相較於0點的位移量
         for y, width in range(len(content_array)):  # 跑過每個列
@@ -52,10 +36,11 @@ class Renderer(Renderable):
                 if content_array[y][x]:  # 有內容
                     screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
 
-    def content(self) -> str:
-        screen = copy.deepcopy(self.empty_screen)  # 複製空的畫面出來
-        for object in self.layers:  # 跑過每個物件
-            self.__rendering(screen, object)  # 渲染到畫面
+    def rendering(self, Width: int, High: int, objects) -> str:
+        # 創建空畫面，內容填充全形空格
+        screen = [["　" for _ in range(Width)] for _ in range(High)]
+        for object in objects:  # 跑過每個物件
+            self.__rendering_object(screen, object)  # 渲染到畫面
         # 回傳渲染後的畫面
         return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
 
