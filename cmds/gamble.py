@@ -35,14 +35,24 @@ def rendering(Width: int, High: int, objects: list[Renderable]) -> str:
         content_array = object.content()  # 取的物件的內容陣列
         for y in range(len(content_array)):  # 跑過每個列
             width = len(content_array[y])
-            for x in range(width):  # 跑過每個列的每個元素
+            for x in range(width):  # 跑過每個列的每個元素，
                 if content_array[y][x]:  # 有內容
                     screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
     # 回傳渲染後的畫面
     return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
 
 
-class Game_driver:
+class Easy_embed:
+    def __init__(self, button_list) -> None:
+        for button_dict in button_list:
+
+            def button_function(interaction, button):
+                print("AAAAAA")
+
+            self[button_dict["name"]] = button_function
+
+
+class Game_driver(ABC):
     screen_array = []
     format_dict = {}
     game_spend = 0
@@ -156,22 +166,7 @@ class Slot_Game_driver(Game_driver):
         self.user_data = user_data
         self.turntable = []
         self.game_spend = 1
-        self.turntable_list = [
-            ":cherries:",
-            ":apple:",
-            ":star:",
-            ":gem:",
-            ":coin:",
-            ":moneybag:",
-        ]
-        self.turntable_money_dict = {
-            ":cherries:": 30,
-            ":apple:": 20,
-            ":star:": 50,
-            ":coin:": 1,
-            ":moneybag:": 100,
-            ":gem:": 777,
-        }
+
         self.screen_array = [
             ["【:slot_machine:你有{money}枚硬幣:slot_machine:】"],
             ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
@@ -179,14 +174,28 @@ class Slot_Game_driver(Game_driver):
             ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
             [""],
         ]
-        self.format_dict = {
-            "Green": ":green_square:",
-            "Blue": ":blue_square:",
-            "Left_arrow": ":arrow_left:",
-            "Right_arrow": ":arrow_right:",
-            "turntables": ":black_large_square:" * 3,
-            "money": user_data.coin,
-        }
+
+    @staticmethod
+    def view() -> View:
+        class embed:
+            @discord.ui.button(emoji=":joystick:")
+            def hit():
+                pass
+
+        return embed
+
+    def trigger_function(self, button):
+        self.game_driver.random()
+        turntable = self.game_driver.turntable
+        if turntable[0] == turntable[1] == turntable[2]:
+            bonus = self.game_driver.turntable_money_dict[turntable[0]]
+            self.game_driver.user_data.coin += bonus
+            self.game_driver.screen_array[4][
+                0
+            ] = f":tada:抽中{self.turntable[0]}獎，獲得{bonus}硬幣:tada: "
+        else:
+            self.game_driver.screen_array[4][0] = ""
+        self.game_driver.format_dict["money"] = self.user_data.coin
 
     def random(self):
         self.turntable = random.choices(self.turntable_list, k=3)
@@ -274,6 +283,10 @@ class Horses_Game_driver(Game_driver):
 
 
 class Blackjack_Game_driver(Game_driver):
+    @staticmethod
+    def __user_init__(user):
+        pass
+
     def __init__(self, user_data) -> None:
         self.user_data = user_data
         self.view = self.init_view()
@@ -326,7 +339,8 @@ class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
         self.coin = 10  # 玩家初始金錢
-        self.slot_game_driver = Slot_Game_driver(self)  # 拉霸遊戲驅動
+
+        # self.slot_game_driver = Slot_Game_driver(self)  # 拉霸遊戲驅動
         self.horess_game_driver = Horses_Game_driver(self)  # 賭馬遊戲驅動
         self.blackjack_game_driver = Blackjack_Game_driver(self)  # 21點遊戲驅動
 
@@ -343,7 +357,9 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Slot(self, ctx):  # 拉霸機
         User = self.get_user(ctx.message.author.id)
-        await ctx.send(User.slot_game_driver.content(), view=User.slot_game_driver.view)
+        Slot_Game_driver.content()
+
+        await ctx.send(User.slot_game_driver.content(), view=Slot_Game_driver.view())
 
     @commands.command()
     async def Blackjack(self, ctx):  # 21點
