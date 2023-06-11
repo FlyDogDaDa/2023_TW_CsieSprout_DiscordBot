@@ -1,11 +1,15 @@
-from flask import Flask
-
-app = Flask("HelloWorld")
+from cmds.gamble import Renderable, Renderer
 
 
-@app.route("/")
-def hello():
-    return "Hello"
+class defor(Renderable):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x, y)
+
+    def content(self) -> list[list[str]]:
+        return [["A", "B", "C"]]
 
 
-app.run(host="0.0.0.0")
+s = Renderer(Renderer.creat_empty_screen(5, 3))
+s.add_object(defor(1, 1))
+s.add_object(defor(2, 1))
+print(s.content())

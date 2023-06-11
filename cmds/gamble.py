@@ -1,4 +1,3 @@
-from typing import Optional
 import discord
 import random
 import asyncio
@@ -6,6 +5,59 @@ from discord.ext import commands
 from discord import ButtonStyle
 from discord.ui import Button, View
 from core import Cog_Extension
+from abc import ABC, abstractmethod
+import copy
+
+
+class Renderable(ABC):
+    @abstractmethod
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__()
+        self.x = x
+        self.y = y
+
+    @abstractmethod
+    def content(self) -> list[list[str]]:
+        pass
+
+
+class Renderer(Renderable):
+    """
+    add_object(object: Renderable) -> None
+    插入可渲染物件到最高圖層。
+
+    content() -> str
+    渲染畫面並回傳字串。
+    """
+
+    def __init__(self, Width: int, High: int) -> None:
+        # 創建空畫面，內容填充全形空格
+        screen = [["　" for _ in range(Width)] for _ in range(High)]
+        self.empty_screen = screen
+
+        # 創建空陣列用來儲存被渲染物件
+        self.layers: list[Renderable] = []
+
+    def add_object(self, object: Renderable):
+        self.layers.insert(0, object)  # 添加物件
+        return self
+
+    @staticmethod
+    def __rendering(screen: list[list[str]], object: Renderable) -> None:
+        content_array = object.content()  # 取的物件的內容陣列
+        x_offset, y_offset = object.x, object.y  # 左上角=相較於0點的位移量
+        for y, width in range(len(content_array)):  # 跑過每個列
+            width = len(content_array[y])
+            for x in range(width):  # 跑過每個列的每個元素
+                if content_array[y][x]:  # 有內容
+                    screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
+
+    def content(self) -> str:
+        screen = copy.deepcopy(self.empty_screen)  # 複製空的畫面出來
+        for object in self.layers:  # 跑過每個物件
+            self.__rendering(screen, object)  # 渲染到畫面
+        # 回傳渲染後的畫面
+        return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
 
 
 class Game_driver:
@@ -240,21 +292,6 @@ class Horses_Game_driver(Game_driver):
 
 
 class Blackjack_Game_driver(Game_driver):
-    def init_view(self):
-        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
-        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
-        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
-        hit_button.callback = self.hit
-        stand_button.callback = self.stand
-        double_down_button.callback = self.double_down
-        view = (
-            View()
-            .add_item(hit_button)
-            .add_item(stand_button)
-            .add_item(double_down_button)
-        )
-        return view
-
     def __init__(self, user_data) -> None:
         self.user_data = user_data
         self.view = self.init_view()
@@ -274,6 +311,21 @@ class Blackjack_Game_driver(Game_driver):
             "turntables": ":black_large_square:" * 3,
             "money": user_data.coin,
         }
+
+    def init_view(self):
+        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
+        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
+        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
+        hit_button.callback = self.hit
+        stand_button.callback = self.stand
+        double_down_button.callback = self.double_down
+        view = (
+            View()
+            .add_item(hit_button)
+            .add_item(stand_button)
+            .add_item(double_down_button)
+        )
+        return view
 
     async def Payment_process(self, interaction: discord.Interaction) -> bool:
         pass
