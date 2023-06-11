@@ -5,7 +5,6 @@ import asyncio
 from discord.ext import commands
 from discord import ButtonStyle
 from discord.ui import Button, View
-from cmds.gamble import Game_driver
 from core import Cog_Extension
 
 
@@ -241,6 +240,21 @@ class Horses_Game_driver(Game_driver):
 
 
 class Blackjack_Game_driver(Game_driver):
+    def init_view(self):
+        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
+        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
+        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
+        hit_button.callback = self.hit
+        stand_button.callback = self.stand
+        double_down_button.callback = self.double_down
+        view = (
+            View()
+            .add_item(hit_button)
+            .add_item(stand_button)
+            .add_item(double_down_button)
+        )
+        return view
+
     def __init__(self, user_data) -> None:
         self.user_data = user_data
         self.view = self.init_view()
@@ -260,21 +274,6 @@ class Blackjack_Game_driver(Game_driver):
             "turntables": ":black_large_square:" * 3,
             "money": user_data.coin,
         }
-
-    def init_view(self):
-        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
-        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
-        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
-        hit_button.callback = self.hit
-        stand_button.callback = self.stand
-        double_down_button.callback = self.double_down
-        view = (
-            View()
-            .add_item(hit_button)
-            .add_item(stand_button)
-            .add_item(double_down_button)
-        )
-        return view
 
     async def Payment_process(self, interaction: discord.Interaction) -> bool:
         pass
@@ -315,7 +314,9 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Blackjack(self, ctx):  # 21點
         User = self.get_user(ctx.message.author.id)
-        await ctx.send("二十一點測試")
+        await ctx.send(
+            User.blackjack_game_driver.content(), view=User.slot_game_driver.view
+        )
 
     @commands.command()
     async def Horses(self, ctx):  # 賭馬
