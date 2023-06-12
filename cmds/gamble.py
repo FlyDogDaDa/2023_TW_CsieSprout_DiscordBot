@@ -46,6 +46,23 @@ class Game_driver(ABC):
 
         return debit_procedures
 
+    @staticmethod
+    def Game_lock(function):  # 扣錢裝飾器
+        """
+        這個裝飾器用於按鈕物件，調用裝飾器檢測餘額，隨後扣款。
+        """
+
+        async def game_lock(self, interaction: discord.Interaction, butten: Button):
+            if self.User.is_in_game:  # 使用者正在遊戲中
+                await interaction.response.send_message(
+                    "你正在其他遊戲中", ephemeral=True
+                )  # 傳送訊息
+                return  # 中斷 #TODO:完成"遊戲鎖"讓玩家不能同時進行多款遊戲。
+            self.User.coin -= self.game_cost  # 扣款
+            await function(self, interaction, butten)  # 執行程式
+
+        return game_lock
+
     @abstractmethod
     def view(User) -> View:
         pass
