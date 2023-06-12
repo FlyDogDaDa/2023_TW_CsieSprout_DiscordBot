@@ -7,71 +7,20 @@ from discord.ui import Button, View
 from core import Cog_Extension
 from abc import ABC, abstractmethod
 
-
-class Renderable(ABC):
-    """
-    可以被渲染的抽象概念，座標為左、上角。
-    """
-
-    @abstractmethod
-    def __init__(self, x: int, y: int) -> None:
-        super().__init__()
-        self.x = x  # 最左座標點
-        self.y = y  # 最上座標點
-
-    @abstractmethod
-    def content(self) -> list[list[str | None]]:  # 可以呼叫內容
-        pass
-
-
-def rendering(Width: int, High: int, objects: list[Renderable]) -> str:
-    """
-    使用畫面大小(Width, High)創建畫面，依照順序渲染objects內容，支援None渲染。
-    """
-    # 創建空畫面，內容填充全形空格
-    screen = [["　" for _ in range(Width)] for _ in range(High)]
-    for object in reversed(objects):  # 跑過每個物件
-        x_offset, y_offset = object.x, object.y  # 左上角=相較於0點的位移量
-        content_array = object.content()  # 取的物件的內容陣列
-        for y in range(len(content_array)):  # 跑過每個列
-            width = len(content_array[y])
-            for x in range(width):  # 跑過每個列的每個元素，
-                if content_array[y][x]:  # 有內容
-                    screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
-    # 回傳渲染後的畫面
-    return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
-
-
-class Easy_embed:
-    def __init__(self, button_list) -> None:
-        for button_dict in button_list:
-
-            def button_function(interaction, button):
-                print("AAAAAA")
-
-            self[button_dict["name"]] = button_function
+# ephemeral=True #私人訊息
 
 
 class Game_driver(ABC):
-    screen_array = []
-    format_dict = {}
-    game_spend = 0
-    deduction_failure_message = ":money_with_wings:你沒有足夠的硬幣！"
-    deduction_success_message = "扣款成功！"
+    @abstractmethod
+    def view(User) -> View:
+        pass
 
-    def content(self) -> str:  # 回傳填充後的畫面字串
-        content = "\n".join(["".join(y_line) for y_line in self.screen_array])
-        return content.format(**self.format_dict)  # 槽填充
-        # await interaction.response.send_message(":money_with_wings:你沒有足夠的硬幣！")
-
-    @staticmethod
-    def Payment_process(user, amount: int) -> bool:
-        if user.coin >= amount:  # 硬幣足夠
-            user.coin -= amount  # 扣款
-            return True  # 回傳付款成功
-        return False  # 回傳付款失敗
+    @abstractmethod
+    def content(User) -> str:  # 回傳填充後的畫面字串
+        pass
 
 
+"""
 class Game_View(View):
     def __init__(
         self,
@@ -119,7 +68,7 @@ class Slot_Game_View(Game_View):
         game_driver: Game_driver,
     ):
         buttons_list = [
-            {"label": "spend 1 coin", "emoji": "🕹️", "style": ButtonStyle.green}
+            {}
         ]
         super().__init__(
             game_driver=game_driver,
@@ -158,50 +107,150 @@ class Horses_Game_View(Game_View):
 
     def trigger_function(self, button):
         self.game_driver.bet.append("{" + button.label + "}")
+"""
+
+
+class User_data:
+    def __init__(self, UserID):
+        self.UserID = UserID  # 玩家ID
+        self.coin = 10  # 玩家初始金錢
+        Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸使用者資料
+
+
+class Rendering:
+    class Package:
+        """
+        可以被渲染的抽象概念，座標為左、上角。
+        """
+
+        def __init__(self, x: int, y: int, content: list[list[str | None]]) -> None:
+            self.x = x  # 最左座標點
+            self.y = y  # 最上座標點
+            self.content = content
+
+    @staticmethod
+    def rendering(Width: int, High: int, objects: list[Package]) -> str:
+        """
+        使用畫面大小(Width, High)創建畫面，依照順序渲染objects內容，支援None渲染。
+        """
+
+        screen = [
+            [":black_large_square:" for _ in range(Width)] for _ in range(High)
+        ]  # 創建空畫面，內容填充全灰色方格
+        for object in reversed(objects):  # 跑過每個物件
+            x_offset, y_offset = object.x, object.y  # 左上角=相較於0點的位移量
+            content_array = object.content  # 取的物件的內容陣列
+            for y in range(len(content_array)):  # 跑過每個列
+                width = len(content_array[y])
+                for x in range(width):  # 跑過每個列的每個元素，
+                    if content_array[y][x]:  # 有內容
+                        screen[y_offset + y][x_offset + x] = content_array[y][x]  # 修改畫面
+        # 回傳渲染後的畫面
+        return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
+
+    @staticmethod
+    def balance_bars(coin: int) -> Package:
+        digital_tuple = (
+            ":zero:",
+            ":one:",
+            ":two:",
+            ":three:",
+            ":four:",
+            ":five:",
+            ":seven:",
+            ":eight:",
+            ":nine:",
+        )
+        digitals = [digital_tuple[int(numeric)] for numeric in str(coin)]  # 用文字表示數字
+        return Rendering.Package(0, 0, [digitals])  # 打包並回傳
+
+    @staticmethod
+    def slot_wheel(Slot_wheel_status: list[int]):
+        wheel_tuple = (":coin:", ":moneybag:", ":gem:", ":dollar:", ":credit_card:")
+        wheel = [wheel_tuple[statu] for statu in Slot_wheel_status]  # 將倫盤狀態映射到表情符號
+        return Rendering.Package(0, 0, [wheel])  # 打包並回傳
 
 
 class Slot_Game_driver(Game_driver):
-    def __init__(self, user_data) -> None:
-        self.view = self.init_view()
-        self.user_data = user_data
-        self.turntable = []
-        self.game_spend = 1
-
-        self.screen_array = [
-            ["【:slot_machine:你有{money}枚硬幣:slot_machine:】"],
-            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
-            ["{Right_arrow}", "{turntables}", "{Left_arrow}"],
-            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
-            [""],
-        ]
+    @staticmethod
+    def __init_user_data__(User):
+        User.Slot_wheel_status = [0, 0, 0]  # 轉輪狀態
+        User.Slot_bonus_level = 0
 
     @staticmethod
-    def view() -> View:
-        class embed:
-            @discord.ui.button(emoji=":joystick:")
-            def hit():
-                pass
+    def view(User: User_data) -> View:
+        class embed(View):
+            def __init__(self, User: User_data, *, timeout: float | None = 180):
+                super().__init__(timeout=timeout)  # 初始化View
+                self.User = User  # 儲存使用者在按鈕中
 
-        return embed
+            @discord.ui.button(
+                label="spend 1 coin", emoji="🕹️", style=ButtonStyle.green
+            )
+            async def game_trigger(
+                self, interaction: discord.Interaction, butten: Button
+            ):
+                game_cost = 10  # 每局遊戲所需花費
+                if not (self.User.coin >= game_cost):  # 餘額不夠啟動遊戲
+                    await interaction.response.send_message(
+                        "餘額不夠啟動遊戲", ephemeral=True
+                    )  # 傳送訊息
+                    return  # 中斷程式
 
-    def trigger_function(self, button):
-        self.game_driver.random()
-        turntable = self.game_driver.turntable
-        if turntable[0] == turntable[1] == turntable[2]:
-            bonus = self.game_driver.turntable_money_dict[turntable[0]]
-            self.game_driver.user_data.coin += bonus
-            self.game_driver.screen_array[4][
-                0
-            ] = f":tada:抽中{self.turntable[0]}獎，獲得{bonus}硬幣:tada: "
-        else:
-            self.game_driver.screen_array[4][0] = ""
-        self.game_driver.format_dict["money"] = self.user_data.coin
+                self.User.coin -= game_cost  # 扣款
+                wheel_status = [random.randint(0, 4) for _ in range(3)]  # 生成隨機輪盤狀態
+                self.User.Slot_wheel_status[:] = wheel_status  # 覆蓋現有輪盤狀態
+                wheel_is_equal = (
+                    wheel_status[0] == wheel_status[1] == wheel_status[2]
+                )  # 輪盤狀態相等
+                if wheel_is_equal:  # 中獎
+                    self.User.Slot_bonus_level = 1 + wheel_status[0]  # 設定獎金等級是輪盤的順序
+                else:
+                    self.User.Slot_bonus_level = 0  # 設定獎金等級0
 
-    def random(self):
-        self.turntable = random.choices(self.turntable_list, k=3)
-        self.format_dict["turntables"] = "".join(self.turntable)
+                await interaction.response.edit_message(
+                    content=Slot_Game_driver.content(self.User),
+                    view=Slot_Game_driver.view(self.User),
+                )
+
+        return embed(User)
+
+    @staticmethod
+    def content(User: User_data) -> str:
+        Width = 11
+        High = 4
+
+        arrow = Rendering.Package(
+            1,
+            2,
+            [
+                [":arrow_right:", ":slot_machine:", ":arrow_right:"]
+                + [None] * 3
+                + [":arrow_left:", ":slot_machine:", ":arrow_left:"]
+            ],
+        )  # 指向中間的箭頭
+
+        balance_bar = Rendering.balance_bars(User.coin)  # 取得餘額條
+        balance_bar.x = (11 - len(balance_bar.content[0])) // 2  # 移動到置中
+        balance_bar.y = 1  # 設定座標
+
+        slot_wheel = Rendering.slot_wheel(User.Slot_wheel_status)  # 取得轉輪
+        slot_wheel.x, slot_wheel.y = 4, 2  # 設定座標
+
+        Machine_color = Rendering.Package(
+            0, 0, [[":blue_square:" for _ in range(11)] for _ in range(4)]  # 9x4的藍色區域
+        )
+
+        layers = [
+            balance_bar,  # 餘額條
+            slot_wheel,  # 轉輪
+            arrow,  # 向轉輪箭頭
+            Machine_color,  # 底色
+        ]
+        return Rendering.rendering(Width, High, layers)
 
 
+"""
 class Horses_Game_driver(Game_driver):
     def __init__(self, user_data) -> None:
         self.view = Horses_Game_View(game_driver=self)
@@ -334,15 +383,7 @@ class Blackjack_Game_driver(Game_driver):
     async def double_down(self, interaction: discord.Interaction):
         pass
 
-
-class User_data:
-    def __init__(self, UserID):
-        self.UserID = UserID  # 玩家ID
-        self.coin = 10  # 玩家初始金錢
-
-        # self.slot_game_driver = Slot_Game_driver(self)  # 拉霸遊戲驅動
-        self.horess_game_driver = Horses_Game_driver(self)  # 賭馬遊戲驅動
-        self.blackjack_game_driver = Blackjack_Game_driver(self)  # 21點遊戲驅動
+"""
 
 
 class Gamble(Cog_Extension):
@@ -357,9 +398,8 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Slot(self, ctx):  # 拉霸機
         User = self.get_user(ctx.message.author.id)
-        Slot_Game_driver.content()
 
-        await ctx.send(User.slot_game_driver.content(), view=Slot_Game_driver.view())
+        await ctx.send(Slot_Game_driver.content(User), view=Slot_Game_driver.view(User))
 
     @commands.command()
     async def Blackjack(self, ctx):  # 21點
