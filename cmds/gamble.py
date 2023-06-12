@@ -7,10 +7,45 @@ from discord.ui import Button, View
 from core import Cog_Extension
 from abc import ABC, abstractmethod
 
-# ephemeral=True #私人訊息
-
 
 class Game_driver(ABC):
+    @staticmethod
+    def Same_user_check(function):  # 相同玩家檢測裝飾器
+        """
+        這個裝飾器用於按鈕物件，調用裝飾器在運行前檢測使用者是否相同
+        """
+
+        async def same_user_check(
+            self, interaction: discord.Interaction, butten: Button
+        ):
+            if self.User.UserID != interaction.user.id:  # 餘額不夠啟動遊戲
+                await interaction.response.send_message(
+                    "這是其他人啟動的遊戲局，你可以使用help查看啟動方法", ephemeral=True
+                )  # 傳送訊息
+                return  # 中斷程式
+            await function(self, interaction, butten)  # 執行程式
+
+        return same_user_check
+
+    @staticmethod
+    def Debit_procedures(function):  # 扣錢裝飾器
+        """
+        這個裝飾器用於按鈕物件，調用裝飾器檢測餘額，隨後扣款。
+        """
+
+        async def debit_procedures(
+            self, interaction: discord.Interaction, butten: Button
+        ):
+            if not (self.User.coin >= self.game_cost):  # 餘額不夠啟動遊戲
+                await interaction.response.send_message(
+                    "餘額不夠啟動遊戲", ephemeral=True
+                )  # 傳送訊息
+                return  # 中斷
+            self.User.coin -= self.game_cost  # 扣款
+            await function(self, interaction, butten)  # 執行程式
+
+        return debit_procedures
+
     @abstractmethod
     def view(User) -> View:
         pass
@@ -157,6 +192,7 @@ class Rendering:
             ":three:",
             ":four:",
             ":five:",
+            ":six:",
             ":seven:",
             ":eight:",
             ":nine:",
@@ -166,7 +202,7 @@ class Rendering:
 
     @staticmethod
     def slot_wheel(Slot_wheel_status: list[int]):
-        wheel_tuple = (":coin:", ":moneybag:", ":gem:", ":dollar:", ":credit_card:")
+        wheel_tuple = (":coin:", ":moneybag:", ":dollar:", ":gem:", ":credit_card:")
         wheel = [wheel_tuple[statu] for statu in Slot_wheel_status]  # 將倫盤狀態映射到表情符號
         return Rendering.Package(0, 0, [wheel])  # 打包並回傳
 
@@ -175,29 +211,26 @@ class Slot_Game_driver(Game_driver):
     @staticmethod
     def __init_user_data__(User):
         User.Slot_wheel_status = [0, 0, 0]  # 轉輪狀態
-        User.Slot_bonus_level = 0
+        User.Slot_bonus_level = 0  # 中獎等級0~5
 
     @staticmethod
     def view(User: User_data) -> View:
         class embed(View):
             def __init__(self, User: User_data, *, timeout: float | None = 180):
                 super().__init__(timeout=timeout)  # 初始化View
-                self.User = User  # 儲存使用者在按鈕中
+                self.User = User  # 儲存使用者
+                self.game_cost = 1  # 每局遊戲所需花費
 
             @discord.ui.button(
                 label="spend 1 coin", emoji="🕹️", style=ButtonStyle.green
             )
+            @Game_driver.Debit_procedures
+            @Game_driver.Same_user_check
             async def game_trigger(
                 self, interaction: discord.Interaction, butten: Button
             ):
-                game_cost = 10  # 每局遊戲所需花費
-                if not (self.User.coin >= game_cost):  # 餘額不夠啟動遊戲
-                    await interaction.response.send_message(
-                        "餘額不夠啟動遊戲", ephemeral=True
-                    )  # 傳送訊息
-                    return  # 中斷程式
+                bonus_tuple = (0, 1, 5, 10, 20, 30)
 
-                self.User.coin -= game_cost  # 扣款
                 wheel_status = [random.randint(0, 4) for _ in range(3)]  # 生成隨機輪盤狀態
                 self.User.Slot_wheel_status[:] = wheel_status  # 覆蓋現有輪盤狀態
                 wheel_is_equal = (
@@ -207,6 +240,8 @@ class Slot_Game_driver(Game_driver):
                     self.User.Slot_bonus_level = 1 + wheel_status[0]  # 設定獎金等級是輪盤的順序
                 else:
                     self.User.Slot_bonus_level = 0  # 設定獎金等級0
+
+                self.User.coin += bonus_tuple[self.User.Slot_bonus_level]  # 根據抽到的等級儲值
 
                 await interaction.response.edit_message(
                     content=Slot_Game_driver.content(self.User),
@@ -250,28 +285,40 @@ class Slot_Game_driver(Game_driver):
         return Rendering.rendering(Width, High, layers)
 
 
-"""
 class Horses_Game_driver(Game_driver):
-    def __init__(self, user_data) -> None:
-        self.view = Horses_Game_View(game_driver=self)
-        self.user_data = user_data
-        self.leaderboard_str: str = []
-        self.leaderboard: list[list[int, int, str]] = []
-        self.bet = []
-        self.game_spend = 10
-        self.screen_array = [
-            ["【歡迎光臨投注站】"],
-            [":tickets:"] * 7 + [":racehorse:"] * 5,
-            [":palm_tree:" * 12],
-            ["{Black}"] * 10 + ["{knight}", "{Green}"],
-            ["{Black}"] * 10 + ["{knight}", "{Blue}"],
-            ["{Black}"] * 10 + ["{knight}", "{Orange}"],
-            ["{Black}"] * 10 + ["{knight}", "{Red}"],
-            ["{Black}"] * 10 + ["{knight}", "{Brown}"],
-            [":palm_tree:" * 12],
-            [":arrow_down:花費10枚硬幣下注可能會進入前三名的馬匹吧:arrow_down:"],
-        ]
+    def __init_user_data__(User):
+        User.Horses_buy_list = []  # 買的票
 
+    @staticmethod
+    def view(User: User_data) -> View:
+        class embed(View):
+            def __init__(self, User: User_data, *, timeout: float | None = 180):
+                super().__init__(timeout=timeout)  # 初始化View
+                self.User = User  # 儲存使用者
+                self.game_cost = 10  # 每局遊戲所需花費
+
+            horse_colors_str = ["綠", "藍", "橘", "紅", "棕"]  # 馬的顏色
+            for color_str in horse_colors_str:  # 創建各種顏色的按鈕
+
+                @discord.ui.button(
+                    label=f"買{color_str}馬", emoji="🐴", style=ButtonStyle.gray
+                )
+                @Game_driver.Debit_procedures
+                @Game_driver.Same_user_check
+                async def game_trigger(
+                    self, interaction: discord.Interaction, butten: Button
+                ):
+                    self.User.Horses_buy_list.append(
+                        self.horse_colors_str.index(butten.label)
+                    )  # 馬色的index加入購買清單
+
+        return embed(User)
+
+    @staticmethod
+    def content(User: User_data) -> str:
+        Width = 11
+        High = 7
+        """
         self.format_dict = {
             "Black": ":black_large_square:",
             "Green": ":green_square:",
@@ -281,15 +328,57 @@ class Horses_Game_driver(Game_driver):
             "Brown": ":brown_square:",
             "knight": ":horse_racing:",
             "flag": ":checkered_flag:",
-            "money": user_data.coin,
         }
+        """
 
-    def content(self) -> str:
-        content = "\n".join(["".join(y_line) for y_line in self.screen_array])
-        return content.format(**self.format_dict)  # 槽填充
+        arrow = Rendering.Package(
+            1,
+            2,
+            [
+                [":arrow_right:", ":slot_machine:", ":arrow_right:"]
+                + [None] * 3
+                + [":arrow_left:", ":slot_machine:", ":arrow_left:"]
+            ],
+        )  # 指向中間的箭頭
 
-    def edit_progress_bar(self, index) -> None:
-        self.screen_array[1][index] = "{flag}"
+        balance_bar = Rendering.balance_bars(User.coin)  # 取得餘額條
+        balance_bar.x = (11 - len(balance_bar.content[0])) // 2  # 移動到置中
+        balance_bar.y = 1  # 設定座標
+
+        slot_wheel = Rendering.slot_wheel(User.Slot_wheel_status)  # 取得轉輪
+        slot_wheel.x, slot_wheel.y = 4, 2  # 設定座標
+
+        Machine_color = Rendering.Package(
+            0, 0, [[":blue_square:" for _ in range(11)] for _ in range(4)]  # 9x4的藍色區域
+        )
+
+        layers = [
+            balance_bar,  # 餘額條
+            slot_wheel,  # 轉輪
+            arrow,  # 向轉輪箭頭
+            Machine_color,  # 底色
+        ]
+        return Rendering.rendering(Width, High, layers)
+
+    @staticmethod
+    async def game_trigger(User: User_data):
+        for progress in range(24):  # 12
+            await asyncio.sleep(0.5)  # 為了動畫等待半秒
+            if not progress % 2:  # 如果是整數(一秒)
+                User.horess_game_driver.edit_progress_bar(progress // 2)  # 更新進度條
+            if progress == 14:  # 進入賽馬階段
+                User.horess_game_driver.view.clear_items()  # 清除購買按鈕
+                User.horess_game_driver.screen_array.pop()  # 清除提示購買文字
+            if progress >= 14:  # 賽馬階段中
+                User.horess_game_driver.edit_horses(progress)  # 修改馬的位置
+            if progress == 23:  # 結束
+                User.horess_game_driver.show_leaderboard()  # 顯示記分板
+                calculate_text = User.horess_game_driver.calculate()  # 結算金額
+                await ctx.send(calculate_text)  # 回傳計算後結果
+            await message.edit(
+                content=User.horess_game_driver.content(),
+                view=User.horess_game_driver.view,
+            )  # 修改訊息刷新畫面
 
     def edit_horses(self, timestamp: int) -> None:
         for y in range(3, 8):
@@ -331,6 +420,7 @@ class Horses_Game_driver(Game_driver):
         return f"很可惜這次沒有買中寶馬，下次運氣會更好！"
 
 
+"""
 class Blackjack_Game_driver(Game_driver):
     @staticmethod
     def __user_init__(user):
@@ -415,24 +505,6 @@ class Gamble(Cog_Extension):
         message: discord.Message = await ctx.send(
             User.horess_game_driver.content(), view=User.horess_game_driver.view
         )  # 送出賭馬的文字內容、包含按鈕的view
-
-        for progress in range(24):  # 12
-            await asyncio.sleep(0.5)  # 為了動畫等待半秒
-            if not progress % 2:  # 如果是整數(一秒)
-                User.horess_game_driver.edit_progress_bar(progress // 2)  # 更新進度條
-            if progress == 14:  # 進入賽馬階段
-                User.horess_game_driver.view.clear_items()  # 清除購買按鈕
-                User.horess_game_driver.screen_array.pop()  # 清除提示購買文字
-            if progress >= 14:  # 賽馬階段中
-                User.horess_game_driver.edit_horses(progress)  # 修改馬的位置
-            if progress == 23:  # 結束
-                User.horess_game_driver.show_leaderboard()  # 顯示記分板
-                calculate_text = User.horess_game_driver.calculate()  # 結算金額
-                await ctx.send(calculate_text)  # 回傳計算後結果
-            await message.edit(
-                content=User.horess_game_driver.content(),
-                view=User.horess_game_driver.view,
-            )  # 修改訊息刷新畫面
 
     @commands.command()
     async def Wash_dishes(self, ctx):  # 洗碗
