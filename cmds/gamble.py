@@ -76,7 +76,7 @@ class Game_driver(ABC):
 class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
-        self.coin = 100  # 玩家初始金錢
+        self.coin = 10  # 玩家初始金錢
         self.is_in_game = False
         Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸使用者資料
         Horses_Game_driver.__init_user_data__(self)
