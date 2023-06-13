@@ -115,6 +115,9 @@ class Rendering:
 
     @staticmethod
     def balance_bars(coin: int) -> Package:
+        """
+        傳入數字，回傳以圖組成的數字
+        """
         digital_tuple = (
             ":zero:",
             ":one:",
@@ -132,18 +135,27 @@ class Rendering:
 
     @staticmethod
     def slot_wheel(Slot_wheel_status: list[int]) -> Package:
+        """
+        輸入轉輪的狀態，回傳轉輪
+        """
         wheel_tuple = (":coin:", ":moneybag:", ":dollar:", ":gem:", ":credit_card:")
         wheel = [wheel_tuple[statu] for statu in Slot_wheel_status]  # 將倫盤狀態映射到表情符號
         return Rendering.Package(0, 0, [wheel])  # 打包並回傳
 
     @staticmethod
     def progress_bar(progress: int, max: int, color_str: str) -> Package:
+        """
+        輸入進度、最大上限、填充圖示字串，回傳進度條
+        """
         if progress > max:  # 如果進度超過上限
             progress = max  # 限制為最大值
         return Rendering.Package(0, 0, [[color_str] * progress])  # 打包並回傳
 
     @staticmethod
     def horse_track(running_distance: int, width: int, footprint_str: str) -> Package:
+        """
+        傳入距離、寬度、填充圖示字串，回傳單條跑道
+        """
         race_track = (
             [None] * (width - running_distance - 1)
             + [":horse_racing:"]
@@ -153,6 +165,9 @@ class Rendering:
 
     @staticmethod
     def horse_ranking(User: User_data) -> Package:
+        """
+        傳入使用者，回傳直向排列的馬匹排行榜
+        """
         ranking = list(
             zip(
                 User.Horses_running_distance,
@@ -171,6 +186,9 @@ class Rendering:
 
     @staticmethod
     def horse_track_group(User: User_data, X: int, Y: int) -> list[Package]:
+        """
+        傳入使用者物件、座標，回傳整組的賽馬軌道
+        """
         track_Packages = []  # 用於處存渲染物件
         for running_distance, footprint_str, y_offset in zip(
             User.Horses_running_distance,  # 奔跑距離
@@ -184,6 +202,9 @@ class Rendering:
 
     @staticmethod
     def horse_ticket(User: User_data) -> Package:
+        """
+        渲染使用者的購票清單，回傳直向排列的購票圖示
+        """
         tickets = [[None]] * 5  # 門票陣列
         for index in range(5):  # 跑過五個馬的編號
             if index in User.Horses_buy_list:  # 如果馬的編號在購買清單裡面
