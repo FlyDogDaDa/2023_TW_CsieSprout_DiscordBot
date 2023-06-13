@@ -78,8 +78,8 @@ class User_data:
         self.UserID = UserID  # 玩家ID
         self.coin = 10  # 玩家初始金錢
         self.is_in_game = False
-        Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸使用者資料
-        Horses_Game_driver.__init_user_data__(self)
+        Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸的使用者資料
+        Horses_Game_driver.__init_user_data__(self)  # 初始化賭馬的使用者資料
 
 
 class Rendering:
@@ -91,7 +91,7 @@ class Rendering:
         def __init__(self, x: int, y: int, content: list[list[str | None]]) -> None:
             self.x = x  # 最左座標點
             self.y = y  # 最上座標點
-            self.content = content
+            self.content = content  # 內容陣列
 
     @staticmethod
     def rendering(Width: int, High: int, objects: list[Package]) -> str:
@@ -173,9 +173,9 @@ class Rendering:
     def horse_track_group(User: User_data, X: int, Y: int) -> list[Package]:
         track_Packages = []  # 用於處存渲染物件
         for running_distance, footprint_str, y_offset in zip(
-            User.Horses_running_distance,
-            Horses_Game_driver.track_colors_str,
-            range(5),
+            User.Horses_running_distance,  # 奔跑距離
+            Horses_Game_driver.track_colors_str,  # 馬的顏色文字
+            range(5),  # 馬的編號
         ):  # 處理各顏色的跑馬與軌跡
             racing_track = Rendering.horse_track(running_distance, 10, footprint_str)
             racing_track.x, racing_track.y = X, Y + y_offset  # 設定座標
