@@ -76,7 +76,7 @@ class Game_driver(ABC):
 class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
-        self.coin = 10  # 玩家初始金錢
+        self.coin = 100  # 玩家初始金錢
         self.is_in_game = False
         Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸使用者資料
         Horses_Game_driver.__init_user_data__(self)
@@ -170,15 +170,15 @@ class Rendering:
         return Rendering.Package(0, 0, [[horse[2]] for horse in ranking])  # 打包並回傳
 
     @staticmethod
-    def horse_track_group(User: User_data) -> list[Package]:
+    def horse_track_group(User: User_data, X: int, Y: int) -> list[Package]:
         track_Packages = []  # 用於處存渲染物件
-        for running_distance, footprint_str, Y_axis in zip(
+        for running_distance, footprint_str, y_offset in zip(
             User.Horses_running_distance,
             Horses_Game_driver.track_colors_str,
-            range(2, 8),
+            range(5),
         ):  # 處理各顏色的跑馬與軌跡
             racing_track = Rendering.horse_track(running_distance, 10, footprint_str)
-            racing_track.y = Y_axis  # 調整Y軸
+            racing_track.x, racing_track.y = X, Y + y_offset  # 設定座標
             track_Packages.append(racing_track)  # 加入賽道
         return track_Packages
 
@@ -299,6 +299,7 @@ class Horses_Game_driver(Game_driver):
             async def buy_green(self, interaction: discord.Interaction, butten: Button):
                 self.User.Horses_buy_list.append(0)  # 馬色的index加入購買清單
                 await interaction.response.send_message("購買成功！", ephemeral=True)
+                butten.disabled = True
 
             @discord.ui.button(label="藍", emoji="🐴", style=ButtonStyle.gray)
             @Game_driver.Same_user_check
@@ -306,6 +307,7 @@ class Horses_Game_driver(Game_driver):
             async def buy_blue(self, interaction: discord.Interaction, butten: Button):
                 self.User.Horses_buy_list.append(1)  # 馬色的index加入購買清單
                 await interaction.response.send_message("購買成功！", ephemeral=True)
+                butten.disabled = True
 
             @discord.ui.button(label="橙", emoji="🐴", style=ButtonStyle.gray)
             @Game_driver.Same_user_check
@@ -315,6 +317,7 @@ class Horses_Game_driver(Game_driver):
             ):
                 self.User.Horses_buy_list.append(2)  # 馬色的index加入購買清單
                 await interaction.response.send_message("購買成功！", ephemeral=True)
+                butten.disabled = True
 
             @discord.ui.button(label="紅", emoji="🐴", style=ButtonStyle.gray)
             @Game_driver.Same_user_check
@@ -322,6 +325,7 @@ class Horses_Game_driver(Game_driver):
             async def buy_red(self, interaction: discord.Interaction, butten: Button):
                 self.User.Horses_buy_list.append(3)  # 馬色的index加入購買清單
                 await interaction.response.send_message("購買成功！", ephemeral=True)
+                butten.disabled = True
 
             @discord.ui.button(label="棕", emoji="🐴", style=ButtonStyle.gray)
             @Game_driver.Same_user_check
@@ -329,6 +333,7 @@ class Horses_Game_driver(Game_driver):
             async def buy_brown(self, interaction: discord.Interaction, butten: Button):
                 self.User.Horses_buy_list.append(4)  # 馬色的index加入購買清單
                 await interaction.response.send_message("購買成功！", ephemeral=True)
+                butten.disabled = True
 
         return embed(User)
 
@@ -338,26 +343,35 @@ class Horses_Game_driver(Game_driver):
         High = 7
 
         ticket = Rendering.horse_ticket(User)  # 取得門票圖層
-        ticket.x, ticket.y = 10, 2  # 設定座標
+        ticket.x, ticket.y = 14, 2  # 設定座標
 
-        track_Packages = Rendering.horse_track_group(User)
+        track_Packages = Rendering.horse_track_group(User, 4, 2)  # 各馬跑道
         progress_bar = Rendering.progress_bar(
             User.Horses_progress, 10, ":green_square:"
         )  # 進度條
-        stake_fence = Rendering.Package(0, 1, [[":wood:"] * 10])  # 木柵欄
+        progress_bar.x = 4  # 設定座標
+        stake_fence = Rendering.Package(4, 1, [[":wood:"] * 10])  # 木柵欄
         Leaderboard_color = Rendering.Package(
-            11, 0, [[":white_large_square:"] * 4] * 7
+            0, 0, [[":white_large_square:"] * 4] * 7
         )  # 排行榜底色
         ranking = Rendering.Package(
-            13, 1, [[":first_place:"], [":second_place:"], [":third_place:"],[":cry:"]*2]
+            2,
+            1,
+            [
+                [":first_place:"],
+                [":second_place:"],
+                [":third_place:"],
+                [":cry:"],
+                [":cry:"],
+            ],
         )  # 排名圖示
 
         horse_ranking = (
-            Rendering.horse_ranking(User)
-            if User.Horses_progress == 19
-            else Rendering.Package(0, 0, [[":question:"]] * 5)
+            Rendering.horse_ranking(User)  # 顯示排行
+            if User.Horses_progress == 19  # 進度到最後
+            else Rendering.Package(0, 0, [[":question:"]] * 5)  # 顯示問號
         )  # 馬色排名
-        horse_ranking.x, horse_ranking.y = 12, 1  # 設定座標
+        horse_ranking.x, horse_ranking.y = 1, 1  # 設定座標
 
         layers = [
             ticket,
@@ -368,7 +382,7 @@ class Horses_Game_driver(Game_driver):
             stake_fence,  # 木柵欄
             Leaderboard_color,  # 排行榜底色
         ]
-        return Rendering.rendering(Width, High, layers)
+        return Rendering.rendering(Width, High, layers)  # 回傳渲染畫面
 
     @staticmethod
     async def game_trigger(User: User_data, message: discord.Message, view: View):
@@ -391,10 +405,12 @@ class Horses_Game_driver(Game_driver):
             )  # 修改訊息刷新畫面
             await asyncio.sleep(0.5)  # 動畫等待
 
+        if not User.Horses_buy_list:  # 沒買票
+            return  # 中斷程式
         if User.Horses_bonus:  # 有中獎
             await message.reply(f"恭喜獲得{User.Horses_bonus}枚硬幣")  # 傳送獲獎訊息
             User.coin += User.Horses_bonus
-        else:
+        else:  # 沒中獎
             await message.reply("銘謝惠顧")  # 傳送獲獎訊息
 
 
