@@ -131,19 +131,19 @@ class Rendering:
         return Rendering.Package(0, 0, [digitals])  # 打包並回傳
 
     @staticmethod
-    def slot_wheel(Slot_wheel_status: list[int]):
+    def slot_wheel(Slot_wheel_status: list[int]) -> Package:
         wheel_tuple = (":coin:", ":moneybag:", ":dollar:", ":gem:", ":credit_card:")
         wheel = [wheel_tuple[statu] for statu in Slot_wheel_status]  # 將倫盤狀態映射到表情符號
         return Rendering.Package(0, 0, [wheel])  # 打包並回傳
 
     @staticmethod
-    def progress_bar(progress: int, max: int, color_str: str):
+    def progress_bar(progress: int, max: int, color_str: str) -> Package:
         if progress > max:  # 如果進度超過上限
             progress = max  # 限制為最大值
         return Rendering.Package(0, 0, [[color_str] * progress])  # 打包並回傳
 
     @staticmethod
-    def horse_track(running_distance: int, width: int, footprint_str: str):
+    def horse_track(running_distance: int, width: int, footprint_str: str) -> Package:
         race_track = (
             [None] * (width - running_distance - 1)
             + [":horse_racing:"]
@@ -152,7 +152,7 @@ class Rendering:
         return Rendering.Package(0, 0, [race_track])  # 打包並回傳
 
     @staticmethod
-    def horse_ranking(User: User_data):
+    def horse_ranking(User: User_data) -> Package:
         ranking = list(
             zip(
                 User.Horses_running_distance,
@@ -170,7 +170,7 @@ class Rendering:
         return Rendering.Package(0, 0, [[horse[2]] for horse in ranking])  # 打包並回傳
 
     @staticmethod
-    def horse_track_group(User: User_data):
+    def horse_track_group(User: User_data) -> list[Package]:
         track_Packages = []  # 用於處存渲染物件
         for running_distance, footprint_str, Y_axis in zip(
             User.Horses_running_distance,
@@ -181,6 +181,14 @@ class Rendering:
             racing_track.y = Y_axis  # 調整Y軸
             track_Packages.append(racing_track)  # 加入賽道
         return track_Packages
+
+    @staticmethod
+    def horse_ticket(User: User_data) -> Package:
+        tickets = [[None]] * 5  # 門票陣列
+        for index in range(5):  # 跑過五個馬的編號
+            if index in User.Horses_buy_list:  # 如果馬的編號在購買清單裡面
+                tickets[index] = [":tickets:"]  # 覆蓋成票的圖案
+        return Rendering.Package(0, 0, tickets)  # 打包並回傳
 
 
 class Slot_Game_driver(Game_driver):
@@ -329,6 +337,9 @@ class Horses_Game_driver(Game_driver):
         Width = 15
         High = 7
 
+        ticket = Rendering.horse_ticket(User)  # 取得門票圖層
+        ticket.x, ticket.y = 10, 2  # 設定座標
+
         track_Packages = Rendering.horse_track_group(User)
         progress_bar = Rendering.progress_bar(
             User.Horses_progress, 10, ":green_square:"
@@ -338,16 +349,18 @@ class Horses_Game_driver(Game_driver):
             11, 0, [[":white_large_square:"] * 4] * 7
         )  # 排行榜底色
         ranking = Rendering.Package(
-            13, 1, [[":first_place:"], [":second_place:"], [":third_place:"]]
+            13, 1, [[":first_place:"], [":second_place:"], [":third_place:"],[":cry:"]*2]
         )  # 排名圖示
 
-        if User.Horses_progress == 19:  # 進度到最後
-            horse_ranking = Rendering.horse_ranking(User)  # 馬色排名
-        else:
-            horse_ranking = Rendering.Package(0, 0, [[":question:"]] * 5)  # 未知排名
+        horse_ranking = (
+            Rendering.horse_ranking(User)
+            if User.Horses_progress == 19
+            else Rendering.Package(0, 0, [[":question:"]] * 5)
+        )  # 馬色排名
         horse_ranking.x, horse_ranking.y = 12, 1  # 設定座標
 
         layers = [
+            ticket,
             progress_bar,  # 進度條
             *track_Packages,  # 跑馬與軌跡
             horse_ranking,  # 馬匹排名
@@ -355,7 +368,6 @@ class Horses_Game_driver(Game_driver):
             stake_fence,  # 木柵欄
             Leaderboard_color,  # 排行榜底色
         ]
-        #:question: 票券:tickets:
         return Rendering.rendering(Width, High, layers)
 
     @staticmethod
@@ -384,16 +396,6 @@ class Horses_Game_driver(Game_driver):
             User.coin += User.Horses_bonus
         else:
             await message.reply("銘謝惠顧")  # 傳送獲獎訊息
-
-    def calculate(self) -> str:
-        bonus = 0
-        for color in self.bet:
-            if color in self.leaderboard_str[:3]:
-                bonus += 15
-        self.user_data.coin += bonus
-        if bonus:
-            return f"眼光真好，恭喜你選擇的馬匹為你贏得{bonus}枚硬幣"
-        return f"很可惜這次沒有買中寶馬，下次運氣會更好！"
 
 
 """
