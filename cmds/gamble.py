@@ -46,7 +46,7 @@ class Game_driver(ABC):
 
         return debit_procedures
 
-    @staticmethod
+    @staticmethod  # TODO: 功能還未完善，部分遊戲鎖定功能不穩定。
     def Game_lock(function):  # 扣錢裝飾器
         """
         這個裝飾器用於按鈕物件，調用裝飾器檢測餘額，隨後扣款。
@@ -57,9 +57,10 @@ class Game_driver(ABC):
                 await interaction.response.send_message(
                     "你正在其他遊戲中", ephemeral=True
                 )  # 傳送訊息
-                return  # 中斷 #TODO:完成"遊戲鎖"讓玩家不能同時進行多款遊戲。
-            self.User.coin -= self.game_cost  # 扣款
+                return  # 中斷
+            self.User.is_in_game = True  # 上鎖
             await function(self, interaction, butten)  # 執行程式
+            self.User.is_in_game = False  # 解鎖
 
         return game_lock
 
@@ -72,101 +73,13 @@ class Game_driver(ABC):
         pass
 
 
-"""
-class Game_View(View):
-    def __init__(
-        self,
-        *,
-        game_driver: Game_driver,
-        trigger_function=lambda x: x,
-        definition_buttons_list: list[dict] = [{}],
-        timeout: float | None = 180,
-    ):
-        self.game_driver = game_driver  # 指向遊戲驅動
-        for button_dict in definition_buttons_list:
-
-            @discord.ui.button(**button_dict)
-            async def button_function(interaction, button):
-                await self.Payment_process(interaction, button)
-
-            self[button_dict[""]] = button_function
-
-    def trigger_function():
-        pass
-
-    async def Payment_process(
-        self, interaction: discord.Interaction, button: Button
-    ) -> bool:
-        if not self.game_driver.Payment_process(
-            self.game_driver.user_data, self.game_driver.game_spend
-        ):
-            # 發送失敗訊息
-            await interaction.response.send_message(
-                self.game_driver.deduction_failure_message
-            )
-            return  # 使用回傳跳出
-        # 執行應被觸發的程式
-        self.trigger_function(button)
-        # 發送成功訊息
-        await interaction.response.send_message(
-            self.game_driver.deduction_success_message
-        )
-
-
-class Slot_Game_View(Game_View):
-    def __init__(
-        self,
-        *,
-        game_driver: Game_driver,
-    ):
-        buttons_list = [
-            {}
-        ]
-        super().__init__(
-            game_driver=game_driver,
-            definition_buttons_list=buttons_list,
-            trigger_function=self.trigger_function,
-        )
-
-    def trigger_function(self, button):
-        self.game_driver.random()
-        turntable = self.game_driver.turntable
-        if turntable[0] == turntable[1] == turntable[2]:
-            bonus = self.game_driver.turntable_money_dict[turntable[0]]
-            self.game_driver.user_data.coin += bonus
-            self.game_driver.screen_array[4][
-                0
-            ] = f":tada:抽中{self.turntable[0]}獎，獲得{bonus}硬幣:tada: "
-        else:
-            self.game_driver.screen_array[4][0] = ""
-        self.game_driver.format_dict["money"] = self.user_data.coin
-
-
-class Horses_Game_View(Game_View):
-    def __init__(self, *, game_driver: Game_driver):
-        buttons_list = [
-            {"label": "Green", "emoji": "🐴"},
-            {"label": "Blue", "emoji": "🐴"},
-            {"label": "Orange", "emoji": "🐴"},
-            {"label": "Red", "emoji": "🐴"},
-            {"label": "Brown", "emoji": "🐴"},
-        ]
-        self.game_driver = game_driver  # 指向遊戲驅動
-        super().__init__(
-            game_driver=game_driver,
-            definition_buttons_list=buttons_list,
-        )
-
-    def trigger_function(self, button):
-        self.game_driver.bet.append("{" + button.label + "}")
-"""
-
-
 class User_data:
     def __init__(self, UserID):
         self.UserID = UserID  # 玩家ID
         self.coin = 10  # 玩家初始金錢
+        self.is_in_game = False
         Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸使用者資料
+        Horses_Game_driver.__init_user_data__(self)
 
 
 class Rendering:
@@ -229,6 +142,7 @@ class Slot_Game_driver(Game_driver):
     def __init_user_data__(User):
         User.Slot_wheel_status = [0, 0, 0]  # 轉輪狀態
         User.Slot_bonus_level = 0  # 中獎等級0~5
+        User.horse_progress = 0
 
     @staticmethod
     def view(User: User_data) -> View:
@@ -246,7 +160,7 @@ class Slot_Game_driver(Game_driver):
             async def game_trigger(
                 self, interaction: discord.Interaction, butten: Button
             ):
-                bonus_tuple = (0, 1, 5, 10, 20, 30)
+                bonus_tuple = (0, 1, 5, 10, 20, 30)  # 不同階段的獎金
 
                 wheel_status = [random.randint(0, 4) for _ in range(3)]  # 生成隨機輪盤狀態
                 self.User.Slot_wheel_status[:] = wheel_status  # 覆蓋現有輪盤狀態
@@ -263,7 +177,7 @@ class Slot_Game_driver(Game_driver):
                 await interaction.response.edit_message(
                     content=Slot_Game_driver.content(self.User),
                     view=Slot_Game_driver.view(self.User),
-                )
+                )  # 修改訊息
 
         return embed(User)
 
@@ -314,26 +228,48 @@ class Horses_Game_driver(Game_driver):
                 self.User = User  # 儲存使用者
                 self.game_cost = 10  # 每局遊戲所需花費
 
-            horse_colors_str = ["綠", "藍", "橘", "紅", "棕"]  # 馬的顏色
-            for color_str in horse_colors_str:  # 創建各種顏色的按鈕
+            @discord.ui.button(label="綠", emoji="🐴", style=ButtonStyle.gray)
+            @Game_driver.Same_user_check
+            @Game_driver.Debit_procedures
+            async def buy_green(self, interaction: discord.Interaction, butten: Button):
+                self.User.Horses_buy_list.append(0)  # 馬色的index加入購買清單
+                await interaction.response.send_message("購買成功！", ephemeral=True)
 
-                @discord.ui.button(
-                    label=f"買{color_str}馬", emoji="🐴", style=ButtonStyle.gray
-                )
-                @Game_driver.Debit_procedures
-                @Game_driver.Same_user_check
-                async def game_trigger(
-                    self, interaction: discord.Interaction, butten: Button
-                ):
-                    self.User.Horses_buy_list.append(
-                        self.horse_colors_str.index(butten.label)
-                    )  # 馬色的index加入購買清單
+            @discord.ui.button(label="藍", emoji="🐴", style=ButtonStyle.gray)
+            @Game_driver.Same_user_check
+            @Game_driver.Debit_procedures
+            async def buy_blue(self, interaction: discord.Interaction, butten: Button):
+                self.User.Horses_buy_list.append(1)  # 馬色的index加入購買清單
+                await interaction.response.send_message("購買成功！", ephemeral=True)
+
+            @discord.ui.button(label="橙", emoji="🐴", style=ButtonStyle.gray)
+            @Game_driver.Same_user_check
+            @Game_driver.Debit_procedures
+            async def buy_orange(
+                self, interaction: discord.Interaction, butten: Button
+            ):
+                self.User.Horses_buy_list.append(2)  # 馬色的index加入購買清單
+                await interaction.response.send_message("購買成功！", ephemeral=True)
+
+            @discord.ui.button(label="紅", emoji="🐴", style=ButtonStyle.gray)
+            @Game_driver.Same_user_check
+            @Game_driver.Debit_procedures
+            async def buy_red(self, interaction: discord.Interaction, butten: Button):
+                self.User.Horses_buy_list.append(3)  # 馬色的index加入購買清單
+                await interaction.response.send_message("購買成功！", ephemeral=True)
+
+            @discord.ui.button(label="棕", emoji="🐴", style=ButtonStyle.gray)
+            @Game_driver.Same_user_check
+            @Game_driver.Debit_procedures
+            async def buy_brown(self, interaction: discord.Interaction, butten: Button):
+                self.User.Horses_buy_list.append(4)  # 馬色的index加入購買清單
+                await interaction.response.send_message("購買成功！", ephemeral=True)
 
         return embed(User)
 
     @staticmethod
     def content(User: User_data) -> str:
-        Width = 11
+        Width = 12
         High = 7
         """
         self.format_dict = {
@@ -346,55 +282,24 @@ class Horses_Game_driver(Game_driver):
             "knight": ":horse_racing:",
             "flag": ":checkered_flag:",
         }
+        錢袋:moneybag:
+        骰子:game_die:
+        票券:tickets:
+        木頭:wood:
         """
 
-        arrow = Rendering.Package(
-            1,
-            2,
-            [
-                [":arrow_right:", ":slot_machine:", ":arrow_right:"]
-                + [None] * 3
-                + [":arrow_left:", ":slot_machine:", ":arrow_left:"]
-            ],
-        )  # 指向中間的箭頭
-
-        balance_bar = Rendering.balance_bars(User.coin)  # 取得餘額條
-        balance_bar.x = (11 - len(balance_bar.content[0])) // 2  # 移動到置中
-        balance_bar.y = 1  # 設定座標
-
-        slot_wheel = Rendering.slot_wheel(User.Slot_wheel_status)  # 取得轉輪
-        slot_wheel.x, slot_wheel.y = 4, 2  # 設定座標
-
-        Machine_color = Rendering.Package(
-            0, 0, [[":blue_square:" for _ in range(11)] for _ in range(4)]  # 9x4的藍色區域
-        )
-
-        layers = [
-            balance_bar,  # 餘額條
-            slot_wheel,  # 轉輪
-            arrow,  # 向轉輪箭頭
-            Machine_color,  # 底色
-        ]
+        stake_fence = Rendering.Package(0, 1, [[":wood:"] * 12])
+        layers = [stake_fence]
         return Rendering.rendering(Width, High, layers)
 
     @staticmethod
-    async def game_trigger(User: User_data):
-        for progress in range(24):  # 12
+    async def game_trigger(User: User_data, message: discord.Message):
+        # Horses_Game_driver.__init_user_data__(User)  # 初始化使用者資訊
+        for progress in range(20):  # 10 run
             await asyncio.sleep(0.5)  # 為了動畫等待半秒
-            if not progress % 2:  # 如果是整數(一秒)
-                User.horess_game_driver.edit_progress_bar(progress // 2)  # 更新進度條
-            if progress == 14:  # 進入賽馬階段
-                User.horess_game_driver.view.clear_items()  # 清除購買按鈕
-                User.horess_game_driver.screen_array.pop()  # 清除提示購買文字
-            if progress >= 14:  # 賽馬階段中
-                User.horess_game_driver.edit_horses(progress)  # 修改馬的位置
-            if progress == 23:  # 結束
-                User.horess_game_driver.show_leaderboard()  # 顯示記分板
-                calculate_text = User.horess_game_driver.calculate()  # 結算金額
-                await ctx.send(calculate_text)  # 回傳計算後結果
             await message.edit(
-                content=User.horess_game_driver.content(),
-                view=User.horess_game_driver.view,
+                content=Horses_Game_driver.content(User),
+                view=Horses_Game_driver.view(User),
             )  # 修改訊息刷新畫面
 
     def edit_horses(self, timestamp: int) -> None:
@@ -518,10 +423,11 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Horses(self, ctx):  # 賭馬
         User = self.get_user(ctx.message.author.id)
-        User.horess_game_driver.__init__(User)  # 初始化驅動器(清除前次內容)
+
         message: discord.Message = await ctx.send(
-            User.horess_game_driver.content(), view=User.horess_game_driver.view
+            Horses_Game_driver.content(User), view=Horses_Game_driver.view(User)
         )  # 送出賭馬的文字內容、包含按鈕的view
+        # await Horses_Game_driver.game_trigger(User, message) #啟動遊戲
 
     @commands.command()
     async def Wash_dishes(self, ctx):  # 洗碗
