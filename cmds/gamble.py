@@ -80,6 +80,7 @@ class User_data:
         self.is_in_game = False
         Slot_Game_driver.__init_user_data__(self)  # 初始化拉霸的使用者資料
         Horses_Game_driver.__init_user_data__(self)  # 初始化賭馬的使用者資料
+        Blackjack_Game_driver.__init_user_data__(self)  # 初始化賭馬的使用者資料
 
 
 class Rendering:
@@ -435,60 +436,52 @@ class Horses_Game_driver(Game_driver):
             await message.reply("銘謝惠顧")  # 傳送獲獎訊息
 
 
-"""
 class Blackjack_Game_driver(Game_driver):
     @staticmethod
-    def __user_init__(user):
+    def __init_user_data__(User):
         pass
 
-    def __init__(self, user_data) -> None:
-        self.user_data = user_data
-        self.view = self.init_view()
-        self.game_spend = 5
-        self.screen_array = [
-            ["【:slot_machine:你有{money}枚硬幣:slot_machine:】"],
-            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
-            ["{Right_arrow}", "{turntables}", "{Left_arrow}"],
-            ["{Blue}", "{Green}", "{Green}", "{Green}", "{Blue}"],
-            [""],
-        ]
-        self.format_dict = {
-            "Green": ":green_square:",
-            "Blue": ":blue_square:",
-            "Left_arrow": ":arrow_left:",
-            "Right_arrow": ":arrow_right:",
-            "turntables": ":black_large_square:" * 3,
-            "money": user_data.coin,
-        }
+    @staticmethod
+    def view(User: User_data) -> View:
+        class embed(View):
+            def __init__(self, User: User_data, *, timeout: float | None = 180):
+                super().__init__(timeout=timeout)  # 初始化View
+                self.User = User  # 儲存使用者
+                self.game_cost = 5  # 每局遊戲所需花費
 
-    def init_view(self):
-        hit_button = Button(label="加牌", emoji="👇", style=ButtonStyle.green)
-        stand_button = Button(label="停牌", emoji="✋", style=ButtonStyle.red)
-        double_down_button = Button(label="雙倍下注", emoji="💰👆", style=ButtonStyle.grey)
-        hit_button.callback = self.hit
-        stand_button.callback = self.stand
-        double_down_button.callback = self.double_down
-        view = (
-            View()
-            .add_item(hit_button)
-            .add_item(stand_button)
-            .add_item(double_down_button)
-        )
-        return view
+            @discord.ui.button(label="加牌", emoji="👇", style=ButtonStyle.green)
+            @Game_driver.Debit_procedures
+            @Game_driver.Same_user_check
+            async def hit_button(
+                self, interaction: discord.Interaction, butten: Button
+            ):
+                pass
 
-    async def Payment_process(self, interaction: discord.Interaction) -> bool:
-        pass
+            @discord.ui.button(label="停牌", emoji="✋", style=ButtonStyle.red)
+            @Game_driver.Debit_procedures
+            @Game_driver.Same_user_check
+            async def stand_button(
+                self, interaction: discord.Interaction, butten: Button
+            ):
+                pass
 
-    async def hit(self, interaction: discord.Interaction):
-        pass
+            @discord.ui.button(label="雙倍下注", emoji="💰", style=ButtonStyle.grey)
+            @Game_driver.Debit_procedures
+            @Game_driver.Same_user_check
+            async def double_down_button(
+                self, interaction: discord.Interaction, butten: Button
+            ):
+                pass
 
-    async def stand(self, interaction: discord.Interaction):
-        pass
+        return embed(User)
 
-    async def double_down(self, interaction: discord.Interaction):
-        pass
+    @staticmethod
+    def content(User: User_data) -> str:
+        Width = 11
+        High = 4
 
-"""
+        layers = []
+        return Rendering.rendering(Width, High, layers)
 
 
 class Gamble(Cog_Extension):
@@ -510,7 +503,7 @@ class Gamble(Cog_Extension):
     async def Blackjack(self, ctx):  # 21點
         User = self.get_user(ctx.message.author.id)
         await ctx.send(
-            User.blackjack_game_driver.content(), view=User.slot_game_driver.view
+            Blackjack_Game_driver.content(User), view=Blackjack_Game_driver.view(User)
         )
 
     @commands.command()
