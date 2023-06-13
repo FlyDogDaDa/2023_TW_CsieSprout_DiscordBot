@@ -136,13 +136,58 @@ class Rendering:
         wheel = [wheel_tuple[statu] for statu in Slot_wheel_status]  # 將倫盤狀態映射到表情符號
         return Rendering.Package(0, 0, [wheel])  # 打包並回傳
 
+    @staticmethod
+    def progress_bar(progress: int, max: int, color_str: str):
+        if progress > max:  # 如果進度超過上限
+            progress = max  # 限制為最大值
+        return Rendering.Package(0, 0, [[color_str] * progress])  # 打包並回傳
+
+    @staticmethod
+    def horse_track(running_distance: int, width: int, footprint_str: str):
+        race_track = (
+            [None] * (width - running_distance - 1)
+            + [":horse_racing:"]
+            + [footprint_str] * running_distance
+        )  # 馬加上軌跡
+        return Rendering.Package(0, 0, [race_track])  # 打包並回傳
+
+    @staticmethod
+    def horse_ranking(User: User_data):
+        ranking = list(
+            zip(
+                User.Horses_running_distance,
+                range(5),
+                Horses_Game_driver.track_colors_str,
+            )
+        )  # [[距離,index,顏色],...,[距離,index,顏色]]
+        random.shuffle(ranking)  # 打亂前後順序
+        ranking.sort(key=lambda x: x[0], reverse=True)  # 按照名次排好
+
+        for horse in ranking[:3]:  # 馬中前三名
+            if horse[1] in User.Horses_buy_list:  # 這匹馬在購買清單裡面
+                User.Horses_bonus += 15  # 獎金
+
+        return Rendering.Package(0, 0, [[horse[2]] for horse in ranking])  # 打包並回傳
+
+    @staticmethod
+    def horse_track_group(User: User_data):
+        track_Packages = []  # 用於處存渲染物件
+        for running_distance, footprint_str, Y_axis in zip(
+            User.Horses_running_distance,
+            Horses_Game_driver.track_colors_str,
+            range(2, 8),
+        ):  # 處理各顏色的跑馬與軌跡
+            racing_track = Rendering.horse_track(running_distance, 10, footprint_str)
+            racing_track.y = Y_axis  # 調整Y軸
+            track_Packages.append(racing_track)  # 加入賽道
+        return track_Packages
+
 
 class Slot_Game_driver(Game_driver):
     @staticmethod
     def __init_user_data__(User):
         User.Slot_wheel_status = [0, 0, 0]  # 轉輪狀態
         User.Slot_bonus_level = 0  # 中獎等級0~5
-        User.horse_progress = 0
 
     @staticmethod
     def view(User: User_data) -> View:
@@ -204,7 +249,7 @@ class Slot_Game_driver(Game_driver):
         slot_wheel.x, slot_wheel.y = 4, 2  # 設定座標
 
         Machine_color = Rendering.Package(
-            0, 0, [[":blue_square:" for _ in range(11)] for _ in range(4)]  # 9x4的藍色區域
+            0, 0, [[":blue_square:"] * 11] * 4  # 9x4的藍色區域
         )
 
         layers = [
@@ -217,8 +262,19 @@ class Slot_Game_driver(Game_driver):
 
 
 class Horses_Game_driver(Game_driver):
+    track_colors_str = [
+        ":green_square:",
+        ":blue_square:",
+        ":orange_square:",
+        ":red_square:",
+        ":brown_square:",
+    ]
+
     def __init_user_data__(User):
+        User.Horses_bonus = 0  # 獎金
         User.Horses_buy_list = []  # 買的票
+        User.Horses_progress = 0  # 賭馬遊戲進度
+        User.Horses_running_distance = [0] * 5  # 5匹馬的距離
 
     @staticmethod
     def view(User: User_data) -> View:
@@ -227,6 +283,7 @@ class Horses_Game_driver(Game_driver):
                 super().__init__(timeout=timeout)  # 初始化View
                 self.User = User  # 儲存使用者
                 self.game_cost = 10  # 每局遊戲所需花費
+                User.horse_progress = 0
 
             @discord.ui.button(label="綠", emoji="🐴", style=ButtonStyle.gray)
             @Game_driver.Same_user_check
@@ -269,67 +326,64 @@ class Horses_Game_driver(Game_driver):
 
     @staticmethod
     def content(User: User_data) -> str:
-        Width = 12
+        Width = 15
         High = 7
-        """
-        self.format_dict = {
-            "Black": ":black_large_square:",
-            "Green": ":green_square:",
-            "Blue": ":blue_square:",
-            "Orange": ":orange_square:",
-            "Red": ":red_square:",
-            "Brown": ":brown_square:",
-            "knight": ":horse_racing:",
-            "flag": ":checkered_flag:",
-        }
-        錢袋:moneybag:
-        骰子:game_die:
-        票券:tickets:
-        木頭:wood:
-        """
 
-        stake_fence = Rendering.Package(0, 1, [[":wood:"] * 12])
-        layers = [stake_fence]
+        track_Packages = Rendering.horse_track_group(User)
+        progress_bar = Rendering.progress_bar(
+            User.Horses_progress, 10, ":green_square:"
+        )  # 進度條
+        stake_fence = Rendering.Package(0, 1, [[":wood:"] * 10])  # 木柵欄
+        Leaderboard_color = Rendering.Package(
+            11, 0, [[":white_large_square:"] * 4] * 7
+        )  # 排行榜底色
+        ranking = Rendering.Package(
+            13, 1, [[":first_place:"], [":second_place:"], [":third_place:"]]
+        )  # 排名圖示
+
+        if User.Horses_progress == 19:  # 進度到最後
+            horse_ranking = Rendering.horse_ranking(User)  # 馬色排名
+        else:
+            horse_ranking = Rendering.Package(0, 0, [[":question:"]] * 5)  # 未知排名
+        horse_ranking.x, horse_ranking.y = 12, 1  # 設定座標
+
+        layers = [
+            progress_bar,  # 進度條
+            *track_Packages,  # 跑馬與軌跡
+            horse_ranking,  # 馬匹排名
+            ranking,  # 排名圖示
+            stake_fence,  # 木柵欄
+            Leaderboard_color,  # 排行榜底色
+        ]
+        #:question: 票券:tickets:
         return Rendering.rendering(Width, High, layers)
 
     @staticmethod
-    async def game_trigger(User: User_data, message: discord.Message):
-        # Horses_Game_driver.__init_user_data__(User)  # 初始化使用者資訊
-        for progress in range(20):  # 10 run
-            await asyncio.sleep(0.5)  # 為了動畫等待半秒
+    async def game_trigger(User: User_data, message: discord.Message, view: View):
+        for progress in range(0, 10):  # 買票
+            User.Horses_progress = progress  # 更新進度
             await message.edit(
                 content=Horses_Game_driver.content(User),
-                view=Horses_Game_driver.view(User),
+                view=view,
             )  # 修改訊息刷新畫面
+            await asyncio.sleep(0.5)  # 動畫等待
 
-    def edit_horses(self, timestamp: int) -> None:
-        for y in range(3, 8):
-            y_line = self.screen_array[y]
-            color = y_line[-1]
+        for progress in range(10, 20):  # 跑馬
+            User.Horses_progress = progress  # 更新進度
+            User.Horses_running_distance = [
+                distance + random.randint(0, 1)
+                for distance in User.Horses_running_distance
+            ]  # 隨機增加馬的移動距離
+            await message.edit(
+                content=Horses_Game_driver.content(User), view=None
+            )  # 修改訊息刷新畫面
+            await asyncio.sleep(0.5)  # 動畫等待
 
-            for _ in range(random.randint(0, 2)):
-                if y_line[0] == "{knight}":  # 抵達終點
-                    if not list(
-                        filter(lambda x: x[2] == color, self.leaderboard)
-                    ):  # 沒加入過計分板
-                        self.leaderboard.append([timestamp, 11, color])  # 加入記分板
-                    break
-                y_line.append(color)
-                y_line.pop(0)
-
-    def show_leaderboard(self) -> None:
-        for y in range(3, 8):
-            y_line = self.screen_array[y]
-            color = y_line[-1]
-            if not list(filter(lambda x: x[2] == color, self.leaderboard)):
-                self.leaderboard.append([24, y_line.count(color), color])  # 加入記分板
-
-        random.shuffle(self.leaderboard)
-        self.leaderboard.sort(reverse=True, key=lambda x: x[1])  # 先排距離
-        self.leaderboard.sort(key=lambda x: x[0])  # 再排時間
-        self.leaderboard_str = [horse[2] for horse in self.leaderboard]
-        self.screen_array.append(self.leaderboard_str)
-        self.screen_array.append([":first_place::second_place::third_place:"])
+        if User.Horses_bonus:  # 有中獎
+            await message.reply(f"恭喜獲得{User.Horses_bonus}枚硬幣")  # 傳送獲獎訊息
+            User.coin += User.Horses_bonus
+        else:
+            await message.reply("銘謝惠顧")  # 傳送獲獎訊息
 
     def calculate(self) -> str:
         bonus = 0
@@ -423,11 +477,12 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Horses(self, ctx):  # 賭馬
         User = self.get_user(ctx.message.author.id)
-
+        Horses_Game_driver.__init_user_data__(User)  # 初始化玩家資訊
+        view = Horses_Game_driver.view(User)
         message: discord.Message = await ctx.send(
-            Horses_Game_driver.content(User), view=Horses_Game_driver.view(User)
+            Horses_Game_driver.content(User), view=view
         )  # 送出賭馬的文字內容、包含按鈕的view
-        # await Horses_Game_driver.game_trigger(User, message) #啟動遊戲
+        await Horses_Game_driver.game_trigger(User, message, view)  # 啟動遊戲
 
     @commands.command()
     async def Wash_dishes(self, ctx):  # 洗碗
