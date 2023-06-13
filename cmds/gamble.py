@@ -180,7 +180,7 @@ class Rendering:
             racing_track = Rendering.horse_track(running_distance, 10, footprint_str)
             racing_track.x, racing_track.y = X, Y + y_offset  # 設定座標
             track_Packages.append(racing_track)  # 加入賽道
-        return track_Packages
+        return track_Packages  # 回傳跑道list
 
     @staticmethod
     def horse_ticket(User: User_data) -> Package:
