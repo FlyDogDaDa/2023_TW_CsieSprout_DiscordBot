@@ -115,7 +115,7 @@ class Rendering:
         return "\n".join(list(map(lambda line: "".join(list(map(str, line))), screen)))
 
     @staticmethod
-    def balance_bars(coin: int) -> Package:
+    def number_bars(number: int) -> Package:
         """
         傳入數字，回傳以圖組成的數字
         """
@@ -131,7 +131,7 @@ class Rendering:
             ":eight:",
             ":nine:",
         )
-        digitals = [digital_tuple[int(numeric)] for numeric in str(coin)]  # 用文字表示數字
+        digitals = [digital_tuple[int(numeric)] for numeric in str(number)]  # 用文字表示數字
         return Rendering.Package(0, 0, [digitals])  # 打包並回傳
 
     @staticmethod
@@ -271,7 +271,7 @@ class Slot_Game_driver(Game_driver):
             ],
         )  # 指向中間的箭頭
 
-        balance_bar = Rendering.balance_bars(User.coin)  # 取得餘額條
+        balance_bar = Rendering.number_bars(User.coin)  # 取得餘額條
         balance_bar.x = (11 - len(balance_bar.content[0])) // 2  # 移動到置中
         balance_bar.y = 1  # 設定座標
 
@@ -437,9 +437,43 @@ class Horses_Game_driver(Game_driver):
 
 
 class Blackjack_Game_driver(Game_driver):
+    digital_tuple = (
+        None,
+        ":regional_indicator_a:",
+        ":two:",
+        ":three:",
+        ":four:",
+        ":five:",
+        ":six:",
+        ":seven:",
+        ":eight:",
+        ":nine:",
+        ":regional_indicator_j:",
+        ":regional_indicator_q:",
+        ":regional_indicator_k:",
+    )
+
     @staticmethod
     def __init_user_data__(User):
-        pass
+        User.Blackjack_cards = []  # 手牌
+        User.Blackjack_progress = 0  # 遊戲進度(回合)
+
+    @staticmethod
+    def hand_cards_calculate(cards: list) -> int:
+        card_A_amount = 0  # A卡的數量
+        replace_cards = []  # 清理過的卡牌格式
+        for card in cards:
+            if card == 1:  # 這張卡是A
+                card_A_amount += 1  # A卡計數增加
+            if card >= 10:  # 10,11,12都當做10計算
+                replace_cards.append(10)
+            else:
+                replace_cards.append(card)  # 加入卡牌
+
+        card_total = sum(replace_cards)
+        if card_A_amount and card_total <= 11:  # 有A牌 and 牌夠小
+            card_total += 10  # 把1(A)當作11，所以要加10
+        return card_total
 
     @staticmethod
     def view(User: User_data) -> View:
@@ -450,7 +484,6 @@ class Blackjack_Game_driver(Game_driver):
                 self.game_cost = 5  # 每局遊戲所需花費
 
             @discord.ui.button(label="加牌", emoji="👇", style=ButtonStyle.green)
-            @Game_driver.Debit_procedures
             @Game_driver.Same_user_check
             async def hit_button(
                 self, interaction: discord.Interaction, butten: Button
@@ -458,14 +491,13 @@ class Blackjack_Game_driver(Game_driver):
                 pass
 
             @discord.ui.button(label="停牌", emoji="✋", style=ButtonStyle.red)
-            @Game_driver.Debit_procedures
             @Game_driver.Same_user_check
             async def stand_button(
                 self, interaction: discord.Interaction, butten: Button
             ):
                 pass
 
-            @discord.ui.button(label="雙倍下注", emoji="💰", style=ButtonStyle.grey)
+            @discord.ui.button(label="雙倍下注", emoji="", style=ButtonStyle.grey)
             @Game_driver.Debit_procedures
             @Game_driver.Same_user_check
             async def double_down_button(
@@ -496,12 +528,13 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Slot(self, ctx):  # 拉霸機
         User = self.get_user(ctx.message.author.id)
-
+        Slot_Game_driver.__init_user_data__(User)  # 初始化玩家資訊
         await ctx.send(Slot_Game_driver.content(User), view=Slot_Game_driver.view(User))
 
     @commands.command()
     async def Blackjack(self, ctx):  # 21點
         User = self.get_user(ctx.message.author.id)
+        Blackjack_Game_driver.__init_user_data__(User)  # 初始化玩家資訊
         await ctx.send(
             Blackjack_Game_driver.content(User), view=Blackjack_Game_driver.view(User)
         )
