@@ -455,7 +455,8 @@ class Blackjack_Game_driver(Game_driver):
 
     @staticmethod
     def __init_user_data__(User):
-        User.Blackjack_cards = []  # 手牌
+        User.Blackjack_hand_cards = []  # 手牌
+        User.Blackjack_dealer_cards = []  # 莊家牌
         User.Blackjack_progress = 0  # 遊戲進度(回合)
 
     @staticmethod
@@ -474,6 +475,10 @@ class Blackjack_Game_driver(Game_driver):
         if card_A_amount and card_total <= 11:  # 有A牌 and 牌夠小
             card_total += 10  # 把1(A)當作11，所以要加10
         return card_total
+
+    @staticmethod
+    def deal_cards(cards: list[int]) -> None:  # 發牌含式
+        cards.append(random.randint(1, 12))  # 發牌
 
     @staticmethod
     def view(User: User_data) -> View:
@@ -497,7 +502,7 @@ class Blackjack_Game_driver(Game_driver):
             ):
                 pass
 
-            @discord.ui.button(label="雙倍下注", emoji="", style=ButtonStyle.grey)
+            @discord.ui.button(label="雙倍下注", emoji="💰", style=ButtonStyle.grey)
             @Game_driver.Debit_procedures
             @Game_driver.Same_user_check
             async def double_down_button(
@@ -509,10 +514,22 @@ class Blackjack_Game_driver(Game_driver):
 
     @staticmethod
     def content(User: User_data) -> str:
-        Width = 11
-        High = 4
+        Width = 10
+        High = 5
+        if not User.Blackjack_progress:  # 初次啟動遊戲
+            Blackjack_Game_driver.deal_cards(User.Blackjack_hand_cards)  # 發一張到手牌
 
-        layers = []
+        play_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_hand_cards
+        )  # 計算玩家牌點數
+        dealer_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_dealer_cards
+        )  # 計算莊家牌點數
+
+        table_base_color = Rendering.Package(
+            0, 0, [[":green_square:"] * 11] * 4
+        )  # 桌子底色
+        layers = [table_base_color]
         return Rendering.rendering(Width, High, layers)
 
 
