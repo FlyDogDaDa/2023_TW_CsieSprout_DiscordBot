@@ -705,10 +705,21 @@ class Gamble(Cog_Extension):
         await Horses_Game_driver.game_trigger(User, message, view)  # 啟動遊戲
 
     @commands.command()
-    async def Wash_dishes(self, ctx):  # 洗碗
+    async def do_the_dishes(self, ctx):  # 洗碗
         User = self.get_user(ctx.message.author.id)
         User.coin += 5
         await ctx.send("你幫別人洗碗，獲得5枚硬幣")
+
+    @commands.command()
+    async def walk_the_dog(self, ctx):  # 洗碗
+        User = self.get_user(ctx.message.author.id)
+        User.coin += 5
+        await ctx.send("你幫別人遛狗，獲得5枚硬幣")
+
+    async def mowing_the_lawn(self, ctx):  # 洗碗
+        User = self.get_user(ctx.message.author.id)
+        User.coin += 5
+        await ctx.send("你幫別人修草皮，獲得5枚硬幣")
 
     @commands.command()
     async def wallet(self, ctx):  # 查看餘額
