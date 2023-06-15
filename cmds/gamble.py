@@ -458,6 +458,8 @@ class Blackjack_Game_driver(Game_driver):
         User.Blackjack_hand_cards = []  # 手牌
         User.Blackjack_dealer_cards = []  # 莊家牌
         User.Blackjack_progress = 0  # 遊戲進度(回合)
+        User.Blackjack_prize_pool = 0  # 獎池
+        User.Blackjack_game_start = False  # 遊戲是否進行
 
     @staticmethod
     def hand_cards_calculate(cards: list) -> int:
@@ -481,6 +483,74 @@ class Blackjack_Game_driver(Game_driver):
         cards.append(random.randint(1, 12))  # 發牌
 
     @staticmethod
+    def card_numbers_to_rendering(cards: list[int]) -> Rendering.Package:
+        return Rendering.Package(
+            0,
+            0,
+            [[Blackjack_Game_driver.digital_tuple[card_int] for card_int in cards]],
+        )
+
+    @staticmethod
+    def game_state_refresh(User: User_data) -> None:
+        User.Blackjack_game_start = (
+            Blackjack_Game_driver.hand_cards_calculate(User.Blackjack_hand_cards) < 21
+        )  # 能不能繼續進行取決於手牌還有沒有在21以內，因為21直接獲勝所以不含21
+
+    @staticmethod
+    def dealer_action(User: User_data) -> None:
+        play_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_hand_cards
+        )  # 計算玩家牌點數
+        dealer_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_dealer_cards
+        )  # 計算莊家牌點數
+        if play_points > 21:  # 爆牌
+            return
+        while len(User.Blackjack_dealer_cards) < 5 and (
+            dealer_points < 17 or play_points > dealer_points
+        ):  # 沒有過五關且(小於17或玩家牌比較大)
+            Blackjack_Game_driver.deal_cards(User.Blackjack_dealer_cards)  # 發一張到莊家
+            dealer_points = Blackjack_Game_driver.hand_cards_calculate(
+                User.Blackjack_dealer_cards
+            )  # 計算莊家牌點數
+
+    @staticmethod
+    def settlement_game(User: User_data) -> dict[str:bool]:
+        play_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_hand_cards
+        )  # 計算玩家牌點數
+        dealer_points = Blackjack_Game_driver.hand_cards_calculate(
+            User.Blackjack_dealer_cards
+        )  # 計算莊家牌點數
+        if play_points > 21:  # 玩家爆牌
+            return {"play": False, "dealer": True}  # 莊家獲勝
+
+        if dealer_points > 21:  # 莊家爆牌
+            User.coin += User.Blackjack_prize_pool * 2  # 獲得1倍獎勵
+            return {"play": True, "dealer": False}  # 玩家獲勝
+
+        if len(User.Blackjack_hand_cards) == 5:  # 玩家過五關
+            User.coin += User.Blackjack_prize_pool * 2  # 獲得1倍獎勵
+            return {"play": True, "dealer": False}  # 玩家獲勝
+
+        if len(User.Blackjack_dealer_cards) == 5:  # 莊家過五關
+            return {"play": False, "dealer": True}  # 莊家獲勝
+
+        if len(User.Blackjack_hand_cards) == 2 and play_points == 21:  # 玩家拿到21點
+            User.coin += User.Blackjack_prize_pool * 2.5  # 獲得1.5倍獎勵
+            return {"play": True, "dealer": False}  # 玩家獲勝
+
+        if dealer_points > play_points:  # 莊家牌大於玩家
+            return {"play": False, "dealer": True}  # 莊家獲勝
+
+        if dealer_points < play_points:  # 玩家牌大於莊家
+            User.coin += User.Blackjack_prize_pool * 2  # 獲得1倍獎勵
+            return {"play": True, "dealer": False}  # 莊家獲勝
+
+        User.coin += User.Blackjack_prize_pool  # 玩家取回下注金
+        return {"play": True, "dealer": True}  # 平手
+
+    @staticmethod
     def view(User: User_data) -> View:
         class embed(View):
             def __init__(self, User: User_data, *, timeout: float | None = 180):
@@ -493,14 +563,33 @@ class Blackjack_Game_driver(Game_driver):
             async def hit_button(
                 self, interaction: discord.Interaction, butten: Button
             ):
-                pass
+                self.User.Blackjack_progress += 1  # 進度+1
+                if len(User.Blackjack_hand_cards) < 5:  # 五張牌以內
+                    Blackjack_Game_driver.deal_cards(
+                        User.Blackjack_hand_cards
+                    )  # 發一張到手牌
+
+                Blackjack_Game_driver.game_state_refresh(User)  # 重新判定狀態
+                view = (
+                    Blackjack_Game_driver.view(User)  # 設定按鈕
+                    if User.Blackjack_game_start  # 如果遊戲還能繼續
+                    else None  # 結束遊戲就把按鈕移除
+                )
+                await interaction.response.edit_message(
+                    content=Blackjack_Game_driver.content(User),
+                    view=view,
+                )  # 修改訊息
 
             @discord.ui.button(label="停牌", emoji="✋", style=ButtonStyle.red)
             @Game_driver.Same_user_check
             async def stand_button(
                 self, interaction: discord.Interaction, butten: Button
             ):
-                pass
+                self.User.Blackjack_progress += 1  # 進度+1
+                self.User.Blackjack_game_start = False  # 停止遊戲
+                await interaction.response.edit_message(
+                    content=Blackjack_Game_driver.content(User), view=None
+                )  # 修改訊息
 
             @discord.ui.button(label="雙倍下注", emoji="💰", style=ButtonStyle.grey)
             @Game_driver.Debit_procedures
@@ -508,7 +597,13 @@ class Blackjack_Game_driver(Game_driver):
             async def double_down_button(
                 self, interaction: discord.Interaction, butten: Button
             ):
-                pass
+                self.User.Blackjack_progress += 1  # 進度+1
+                Blackjack_Game_driver.deal_cards(User.Blackjack_hand_cards)  # 發一張到手牌
+                User.Blackjack_prize_pool += self.game_cost  # 獎池加錢
+                self.User.Blackjack_game_start = False  # 停止遊戲
+                await interaction.response.edit_message(
+                    content=Blackjack_Game_driver.content(User), view=None
+                )  # 修改訊息
 
         return embed(User)
 
@@ -516,20 +611,57 @@ class Blackjack_Game_driver(Game_driver):
     def content(User: User_data) -> str:
         Width = 10
         High = 5
+        winning = []
         if not User.Blackjack_progress:  # 初次啟動遊戲
             Blackjack_Game_driver.deal_cards(User.Blackjack_hand_cards)  # 發一張到手牌
+            Blackjack_Game_driver.deal_cards(User.Blackjack_dealer_cards)  # 發一張到莊家
+
+        if not User.Blackjack_game_start:  # 遊戲結束了
+            Blackjack_Game_driver.dealer_action(User)  # 莊家完成動作
+            win_dict = Blackjack_Game_driver.settlement_game(User)  # 檢查獲勝情況
+            if win_dict["play"]:
+                winning.append(
+                    Rendering.Package(0, 3, [[":crown:"] + [None] * 8 + [":crown:"]])
+                )  # 玩家獲勝
+            if win_dict["dealer"]:
+                winning.append(
+                    Rendering.Package(0, 1, [[":crown:"] + [None] * 8 + [":crown:"]])
+                )  # 莊家獲勝
 
         play_points = Blackjack_Game_driver.hand_cards_calculate(
             User.Blackjack_hand_cards
         )  # 計算玩家牌點數
+        play_points_bar = Rendering.number_bars(play_points)  # 取得玩家總數的渲染物件
+        play_points_bar.x, play_points_bar.y = 7, 3
+
+        play_cards = Blackjack_Game_driver.card_numbers_to_rendering(
+            User.Blackjack_hand_cards
+        )  # 獲得玩家牌卡的渲染氣
+        play_cards.x, play_cards.y = 1, 3  # 設定座標
+
         dealer_points = Blackjack_Game_driver.hand_cards_calculate(
             User.Blackjack_dealer_cards
         )  # 計算莊家牌點數
+        dealer_points_bar = Rendering.number_bars(dealer_points)  # 取得莊家總數的渲染物件
+        dealer_points_bar.x, dealer_points_bar.y = 7, 1
+
+        dealer_cards = Blackjack_Game_driver.card_numbers_to_rendering(
+            User.Blackjack_dealer_cards
+        )  # 獲得莊家牌卡的渲染氣
+        dealer_cards.x, dealer_cards.y = 1, 1  # 設定座標
 
         table_base_color = Rendering.Package(
-            0, 0, [[":green_square:"] * 11] * 4
+            0, 0, [[":green_square:"] * 10] * 5
         )  # 桌子底色
-        layers = [table_base_color]
+
+        layers = [
+            *winning,  # 獲勝畫面
+            play_cards,  # 玩家手牌
+            dealer_cards,  # 莊家手牌
+            dealer_points_bar,  # 莊家牌點sum條
+            play_points_bar,  # 玩家牌點sum條
+            table_base_color,  # 桌底顏色
+        ]
         return Rendering.rendering(Width, High, layers)
 
 
@@ -551,7 +683,13 @@ class Gamble(Cog_Extension):
     @commands.command()
     async def Blackjack(self, ctx):  # 21點
         User = self.get_user(ctx.message.author.id)
+        if User.coin < 5:
+            await ctx.send("您需要至少5枚硬幣才能啟動遊戲")
+            return  # 中斷遊戲
         Blackjack_Game_driver.__init_user_data__(User)  # 初始化玩家資訊
+        User.Blackjack_game_start = True  # 啟動遊戲
+        User.coin -= 5  # 玩家減5枚硬幣
+        User.Blackjack_prize_pool += 5  # 獎池加5枚硬幣
         await ctx.send(
             Blackjack_Game_driver.content(User), view=Blackjack_Game_driver.view(User)
         )
