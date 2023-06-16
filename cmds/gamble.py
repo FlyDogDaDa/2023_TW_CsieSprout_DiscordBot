@@ -716,6 +716,7 @@ class Gamble(Cog_Extension):
         User.coin += 5
         await ctx.send("你幫別人遛狗，獲得5枚硬幣")
 
+    @commands.command()
     async def mowing_the_lawn(self, ctx):  # 洗碗
         User = self.get_user(ctx.message.author.id)
         User.coin += 5
