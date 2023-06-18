@@ -1,6 +1,7 @@
-# Sprout2023py---
+# Sprout2023py---蟒著 DeBug 組
 
 [Spec 簡報](https://hackmd.io/@Fireball0424/HkED_0UXn)
+
 [蟒著 DeBug 組簡報](https://docs.google.com/presentation/d/1Ih4T5sq7ECS9mVCIYirw-a00Q7mTqpUUkqbTbPMUfWw/edit?usp=sharing)
 
 # 額外套件：
@@ -33,19 +34,19 @@
 
 - gamble.py
 
-  - Slot
+  - `Slot`
     呼叫出拉霸遊戲的 UI 介面
-  - Blackjack
+  - `Blackjack`
     呼叫出 21 點遊戲的 UI 介面
-  - Horses
+  - `Horses`
     呼叫出賭馬遊戲的 UI 介面
-  - do_the_dishes
+  - `do_the_dishes`
     獲得硬幣(錢)的指令
-  - walk_the_dog
+  - `walk_the_dog`
     獲得硬幣(錢)的指令
-  - mowing_the_lawn
+  - `mowing_the_lawn`
     獲得硬幣(錢)的指令
-  - wallet
+  - `wallet`
     查看使用者當前的餘額
 
 - anime.py
