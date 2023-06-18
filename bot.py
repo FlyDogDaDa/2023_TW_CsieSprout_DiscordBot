@@ -41,10 +41,5 @@ async def unload(ctx, extension):
     await ctx.send(f"Unloaded")
 
 
-@bot.event
-async def on_command_error(ctx, extension):
-    await ctx.send(f"輸入指令發生錯誤，您可以使用help指令呼叫使用清單。")
-
-
 if __name__ == "__main__":
     bot.run(os.getenv("TOKEN"))

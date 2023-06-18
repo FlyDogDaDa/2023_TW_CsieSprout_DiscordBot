@@ -1,0 +1,14 @@
+{
+  "launch": {
+    "configurations": [
+      {
+        "name": "Debug Unit Test",
+        "type": "python",
+        "request": "launch",
+        "purpose": "debug-test",
+        "justMyCode": false,
+        "program": "${file}"
+      }
+    ]
+  }
+}

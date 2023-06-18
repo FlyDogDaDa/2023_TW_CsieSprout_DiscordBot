@@ -10,10 +10,9 @@ class Event(Cog_Extension):
         g_channel = self.bot.get_channel(int(os.getenv("general_channel")))
         await g_channel.send(f"歡迎{member}加入!")
 
-    """
-    TODO (optional)
-    Add other events such as on_message, on_command_error
-    """
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, extension):  # 錯誤訊息處理
+        await ctx.send(f"輸入指令發生錯誤，您可以使用help指令呼叫使用清單。")
 
 
 async def setup(bot):
