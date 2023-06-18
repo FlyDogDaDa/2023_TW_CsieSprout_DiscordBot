@@ -732,5 +732,3 @@ async def setup(bot):
     await bot.add_cog(Gamble(bot))
 
 
-async def setup(bot):
-    await bot.add_cog(Gamble(bot))
