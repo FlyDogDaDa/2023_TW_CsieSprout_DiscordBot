@@ -9,9 +9,7 @@ class Player:
     def __init__(self, answer):
         self.answer_times = 0
         self.right_words = 0
-        # self.player = ""
         self.answer = answer
-        # self.in_game = False
         self.alpha = [0 for i in range(26)]
         self.in_game = False
 
@@ -27,27 +25,16 @@ class Wordle(Cog_Extension):
         soup = BeautifulSoup(r.text, "html.parser")
 
         self.players = {}
-        # self.player = ""
-        # self.answer = ""
-        # self.in_game = False
 
         self.words = str(soup).split("\n")
-        # self.answer_times = 0
-        # self.alpha = [0 for i in range(26)]
-        # self.right_words = 0
 
     @commands.command(pass_context=True)
     async def ask(self, ctx, response):
         response = response.lower()
-        # print(response)
-        # global alpha, answer_times, right_words, player, answer, in_game
         player = self.players.get(ctx.author, 0)
         if player == 0 or not player.in_game:
             await ctx.channel.send("The game doesn't start!")
             return
-        # if ctx.author != self.player:
-        #     await ctx.channel.send("You aren't player!")
-        #     return
         if len(response) != 5:
             await ctx.channel.send(
                 "The word must consist of five letters, please guess again."
@@ -99,17 +86,9 @@ class Wordle(Cog_Extension):
 
     @commands.command(pass_context=True)
     async def play_wordle(self, ctx):
-        # global alpha, answer_times, right_words, player, answer, in_game
         player = Player(random.choice(self.words))
         player.in_game = True
-        # print(player.answer)
         self.players[ctx.author] = player
-        # self.answer_times = 0
-        # self.right_words = 0
-        # self.alpha = [0 for i in range(26)]
-        # self.player = ctx.author
-        # self.answer = random.choice(self.words)
-        # self.in_game = True
         await ctx.send(f"Game Start!")
 
 
