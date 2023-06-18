@@ -1,6 +1,4 @@
-import discord
 from discord.ext import commands
-import json
 from core import Cog_Extension
 from collections import defaultdict
 
