@@ -61,6 +61,7 @@ abc、asyncio、json、requests、bs4、collections、os、datetime、selenium
   - `show_anime`
     顯示動漫通知清單
 - task.py
+
   此為 anime.py 的附屬程式。每 60 秒從網站上爬蟲，並檢查更新的動漫。動漫更新時依照使用者的通知清單傳送私人訊息，告知使用者動漫更新。
 - music.py
   - `play {網址}`
