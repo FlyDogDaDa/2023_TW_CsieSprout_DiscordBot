@@ -73,13 +73,13 @@ abc、asyncio、json、requests、bs4、collections、os、datetime、selenium
     繼續撥放被暫停的音樂。
   - `stop`
     停止播放音樂。
-  - queue
+  - `queue`
     列印出音樂待播佇列的內容。
   - `vote`
     使用者們可以通過這個指令投票，表決是否要跳過當前正在播放的音樂。
   - `find_music`
     通過名稱搜尋音樂，將會列出前 4 首搜尋的音樂，再通過`find_music`指令選擇音樂。
-  - choose_music
+  - `choose_music`
     使用此指令可以選擇`find_music`搜尋到的音樂。
 
 [Discord Bot 程式碼檔案](https://github.com/FlyDogDaDa/2023_TW_CsieSprout_DiscordBot)
