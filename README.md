@@ -10,7 +10,7 @@ abc、asyncio、json、requests、bs4、collections、os、datetime、selenium
 
 您可以使用這串指令快速完成安裝：`pip install asyncio jsons requests bs4 collection os-sys DateTime selenium`
 
-# 使用方法：
+# 使用方法與檔案解釋：
 
 - event.py
   - 加入錯誤處理
